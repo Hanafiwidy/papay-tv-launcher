@@ -1,0 +1,69 @@
+# ============================================
+# Mikhayla TV Launcher - paket yang di-disable
+# ============================================
+# Hasil lengkap dari TCL BeyondTV TV-1 (Android TV 9, firmware UK/EU Freeview):
+# 47 paket yang benar-benar disabled di TV-1 (pm list packages -d) + 4 paket
+# tahap 5 (AirScreen, Vidio, TikTok, WeTV) = 51 baris.
+#
+# Aturan (sama seperti repo Gathin23/cleanyourtv):
+#   - semua hanya 'pm disable-user --user 0' -> tidak ada yang di-uninstall
+#   - bisa dibalik sepenuhnya dengan undo.ps1
+#   - package inti Android/TCL yang dibutuhkan TV (tuner, HDMI, input menu,
+#     Settings, Play Services, Play Store) tidak ada di daftar ini
+#
+# Chromecast (com.google.android.apps.mediashell) sengaja dibiarkan menyala,
+# sama seperti di TV-1.
+#
+# Tanpa nama TV/IP/SSID - pakai argumen saat menjalankan setup.ps1.
+
+android.autoinstalls.config.tcl.device
+au.com.stan.and
+com.google.android.feedback
+com.google.android.katniss
+com.google.android.leanbacklauncher.recommendations
+com.google.android.onetimeinitializer
+com.google.android.partnersetup
+com.google.android.speech.pumpkin
+com.google.android.tv.assistant
+com.google.android.tv.bugreportsender
+com.google.android.tvlauncher
+com.google.android.tvrecommendations
+com.google.android.videos
+com.graymatrix.did
+com.ionitech.airscreen
+com.ktcp.osvideo
+com.linecorp.linetv
+com.tcl.android.webview
+com.tcl.appmarket2
+com.tcl.assistant
+com.tcl.bi
+com.tcl.bootadservice
+com.tcl.esticker
+com.tcl.gallery
+com.tcl.keyhelp
+com.tcl.messagebox
+com.tcl.micmanager
+com.tcl.miracast
+com.tcl.MultiScreenInteraction_TV
+com.tcl.partnercustomizer
+com.tcl.smartalexa
+com.tcl.tvweishi
+com.tcl.ui_mediaCenter
+com.tcl.useragreement
+com.tiktok.tv
+com.vidio.android.tv
+tv.wuaki.apptv
+uk.co.freeview.amc_catchup
+uk.co.freeview.amc_horror
+uk.co.freeview.bbc
+uk.co.freeview.ch4_vod
+uk.co.freeview.ch5
+uk.co.freeview.explore
+uk.co.freeview.fvpconfigauth
+uk.co.freeview.itv
+uk.co.freeview.mdsclient
+uk.co.freeview.onnow
+uk.co.freeview.stv
+uk.co.freeview.systemdistributor
+uk.co.freeview.tifbridge
+uk.co.freeview.uktv

@@ -1,0 +1,12 @@
+# TCL BeyondTV (192.168.1.2) - tahap 5: app yang diminta dihapus dari tampilan.
+# Label diperiksa dari APK-nya langsung (aapt2 dump badging), bukan dari nama package.
+#
+# Apply:  tools\disable.ps1 -TvHost 192.168.1.2 lists\tcl-beyondtv-ap08-debloat-stage5.txt
+# Undo:   tools\restore.ps1 -TvHost 192.168.1.2 lists\tcl-beyondtv-ap08-debloat-stage5.txt
+#
+# Catatan: WeTV label-nya ada di package com.ktcp.osvideo (bukan com.tcl.tvweishi, itu TV Guard).
+
+com.ionitech.airscreen                      # label "AirScreen"
+com.vidio.android.tv                        # label "Vidio"
+com.tiktok.tv                               # label "TikTok"
+com.ktcp.osvideo                            # label "WeTV"

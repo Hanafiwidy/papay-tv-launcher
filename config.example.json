@@ -1,0 +1,29 @@
+{
+  "dock_apps": [
+    "com.netflix.ninja",
+    "com.google.android.youtube.tv",
+    "com.amazon.amazonvideo.livingroom",
+    "com.disney.disneyplus",
+    "com.wbd.stream",
+    "com.apple.atve.androidtv.appletv"
+  ],
+  "background_color": "#090C14",
+  "wallpaper": true,
+  "wallpaper_choice": "01_night_earth_orbit.jpg",
+  "cinematic_home": true,
+  "cinematic_art": 0,
+  "cinematic_scrim": 0,
+  "ambient_glow": false,
+  "app_glow": false,
+  "glow_style": "horizon",
+  "dock_glass": true,
+  "icon_only_buttons": true,
+  "wifi_label_width": 200,
+  "focus_overshoot": false,
+  "advanced_effects": true,
+  "glass_style": "rim",
+  "greeting_name": "NAMA KAMU",
+  "home_idle_clock_minutes": 5,
+  "clock_wallpaper": true,
+  "clock_wallpaper_dim": 40
+}
