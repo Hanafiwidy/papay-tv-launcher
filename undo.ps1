@@ -1,5 +1,5 @@
 # =====================================================================
-# Mikhayla TV Launcher - undo.ps1 : balik TV ke semula (stock)
+# Papay TV Launcher - undo.ps1 : balik TV ke semula (stock)
 # =====================================================================
 # Meng-enable lagi semua paket yang dimatikan oleh setup.ps1
 # (disable-user, jadi tidak ada yang hilang), dan menonaktifkan

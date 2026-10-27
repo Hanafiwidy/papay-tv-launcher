@@ -1,5 +1,5 @@
 # =====================================================================
-# Mikhayla TV Launcher - setup lengkap satu perintah untuk TV baru
+# Papay TV Launcher - setup lengkap satu perintah untuk TV baru
 # =====================================================================
 # Hasilnya identik dengan TV-1: launcher glass + suara PS5 + wallpaper +
 # screensaver + debloat 51 paket (disable saja, semua bisa dibalik).

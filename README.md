@@ -1,4 +1,4 @@
-# Mikhayla TV Launcher - Custom Home for TCL BeyondTV
+# Papay TV Launcher - Custom Home for TCL BeyondTV
 
 A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv) launcher (v2.7, versionCode 8) with a Liquid Glass look, Jakarta weather, PS5-style navigation sounds, and a wallpaper-synced idle screensaver. Built and tested on a **TCL BeyondTV (Android TV 9, API 28)**.
 
