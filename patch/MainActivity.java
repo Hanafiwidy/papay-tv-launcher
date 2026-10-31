@@ -3241,8 +3241,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         search.setSingleLine(true);
         search.setInputType(InputType.TYPE_CLASS_TEXT);
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        search.setTextColor(0xFFFFFFFF);
-        search.setHintTextColor(0x4DFFFFFF);
+        // The box turns white while focused (that is when typing happens), so the text
+        // follows pill_text: white on the dark glass, near-black on the white highlight.
+        search.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        search.setHighlightColor(0x338C9EFF);
+        search.setHintTextColor(0xFF9AA0A6);
         search.setTextSize(15);
         search.setTypeface(UiFont.get(this, R.string.font_medium));
         search.setPadding((int) (12 * density), (int) (9 * density), (int) (12 * density), (int) (9 * density));
@@ -3257,6 +3260,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         rows.addView(results, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        final boolean[] fromEnter = new boolean[1];
         final Runnable goFind = () -> {
             final String query = search.getText().toString();
             new Thread(() -> {
@@ -3265,7 +3269,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     if (!popup.isShowing()) return;
                     results.removeAllViews();
                     if (cities.isEmpty()) {
-                        results.addView(sectionLabel("Tidak ketemu — coba ejaan lain"));
+                        if (!query.trim().isEmpty()) {
+                            results.addView(sectionLabel("Tidak ketemu — coba ejaan lain"));
+                        }
+                        return;
                     }
                     for (int i = 0; i < cities.size(); i++) {
                         final WeatherAirQuality.GeoCity city = cities.get(i);
@@ -3274,16 +3281,45 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             popup.dismiss();
                         });
                         results.addView(row);
-                        if (i == 0) row.requestFocus();
+                        // Live suggestions keep the cursor in the box so typing can continue; only
+                        // an explicit OK on the search field hands focus to the result rows.
+                        if (i == 0 && fromEnter[0]) row.requestFocus();
                     }
+                    fromEnter[0] = false;
                 });
             }, "weather-geo").start();
         };
+
+        // Sugesti saat mengetik: tiap perubahan teks menunda pencarian 350 ms supaya bukan satu
+        // request per karakter; hasil muncul di bawah kotak tanpa harus menekan Enter.
+        final Runnable searchDebounce = new Runnable() {
+            @Override
+            public void run() {
+                goFind.run();
+            }
+        };
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                handler.removeCallbacks(searchDebounce);
+                if (s.length() >= 2) handler.postDelayed(searchDebounce, 350);
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+        });
 
         search.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH
                     || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
                         && (event.getAction() == KeyEvent.ACTION_DOWN))) {
+                handler.removeCallbacks(searchDebounce);
+                fromEnter[0] = true;
                 goFind.run();
                 return true;
             }
