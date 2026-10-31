@@ -45,6 +45,9 @@ final class WeatherAirQuality {
     private static final String KEY_AQI_DATETIME = "aqi_datetime";
     private static final String KEY_AQI_IS_JAS = "aqi_is_jas";
     private static final String KEY_LAST_UPDATE = "last_update";
+    private static final String KEY_CITY_NAME = "city_name";
+    private static final String KEY_CITY_LAT = "city_lat";
+    private static final String KEY_CITY_LON = "city_lon";
     private static final long REFRESH_INTERVAL_MS = 30L * 60 * 1000; // 30 minutes
 
     static class HourlyItem {
@@ -151,6 +154,82 @@ final class WeatherAirQuality {
         syncInternal(context, onUpdated, false);
     }
 
+    /** One result of an Open-Meteo geocoding search, shown as a row of the city switcher. */
+    static class GeoCity {
+        final String name;
+        final String admin1;
+        final String country;
+        final double lat;
+        final double lon;
+
+        GeoCity(String name, String admin1, String country, double lat, double lon) {
+            this.name = name;
+            this.admin1 = admin1;
+            this.country = country;
+            this.lat = lat;
+            this.lon = lon;
+        }
+    }
+
+    /** The city the weather card follows; Jakarta until the switcher stores another choice. */
+    static String getCityName(Context context) {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_CITY_NAME, "Jakarta");
+    }
+
+    private static double getCityLat(Context context) {
+        return Double.longBitsToDouble(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getLong(KEY_CITY_LAT, Double.doubleToRawLongBits(-6.2088)));
+    }
+
+    private static double getCityLon(Context context) {
+        return Double.longBitsToDouble(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getLong(KEY_CITY_LON, Double.doubleToRawLongBits(106.8456)));
+    }
+
+    /**
+     * Switches the city from the panel: drops the cached forecast of the old city so the card shows
+     * nothing stale, then refetches with the new coordinates in the background.
+     */
+    static void setCity(Context context, GeoCity city, Runnable onUpdated) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+                .putString(KEY_CITY_NAME, city.name)
+                .putLong(KEY_CITY_LAT, Double.doubleToRawLongBits(city.lat))
+                .putLong(KEY_CITY_LON, Double.doubleToRawLongBits(city.lon))
+                .remove(KEY_LAST_UPDATE)
+                .remove(KEY_WEATHER_JSON)
+                .remove(KEY_AQI_JSON)
+                .apply();
+        sync(context, onUpdated);
+    }
+
+    /** Geo search of the switcher, network on the caller thread. */
+    static List<GeoCity> geocodeSync(String query) {
+        List<GeoCity> results = new ArrayList<>();
+        if (query == null) return results;
+        String q = query.trim();
+        if (q.isEmpty()) return results;
+        try {
+            String url = "https://geocoding-api.open-meteo.com/v1/search?name="
+                    + java.net.URLEncoder.encode(q, "UTF-8")
+                    + "&count=8&language=id&format=json";
+            JSONObject json = fetchJson(url);
+            JSONArray arr = json != null ? json.optJSONArray("results") : null;
+            if (arr != null) {
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject c = arr.getJSONObject(i);
+                    results.add(new GeoCity(c.optString("name"), c.optString("admin1", ""),
+                            c.optString("country", ""),
+                            c.optDouble("latitude", 0), c.optDouble("longitude", 0)));
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Geocode error: " + e.getMessage());
+        }
+        return results;
+    }
+
     private static void syncInternal(Context context, Runnable onUpdated, boolean force) {
         new Thread(() -> {
             try {
@@ -161,8 +240,8 @@ final class WeatherAirQuality {
                     return; // Cache is still fresh
                 }
 
-                double lat = AppLocationManager.getLatitude(context);
-                double lon = AppLocationManager.getLongitude(context);
+                double lat = getCityLat(context);
+                double lon = getCityLon(context);
                 String stationId = AppLocationManager.getStationId(context);
                 String defaultPlace = AppLocationManager.getStationPlace(context);
 
@@ -405,12 +484,12 @@ final class WeatherAirQuality {
                         Calendar nowCal = Calendar.getInstance();
                         int currentHour = nowCal.get(Calendar.HOUR_OF_DAY);
                         int count = 0;
-                        for (int i = 0; i < times.length() && count < 12; i++) {
+                        for (int i = 0; i < times.length() && count < 24; i++) {
                             String tStr = times.optString(i, "");
                             if (tStr.contains("T")) {
                                 int hour = Integer.parseInt(tStr.substring(tStr.indexOf('T') + 1, tStr.indexOf(':')));
                                 if (count > 0 || hour >= currentHour) {
-                                    String label = count == 0 ? "Now" : formatHourLabel(hour);
+                                    String label = count == 0 ? "Skrg" : formatHourLabel(hour);
                                     int t = (int) Math.round(temps.optDouble(i, 28.0));
                                     int c = codes != null ? codes.optInt(i, 2) : 2;
                                     int r = rains != null ? rains.optInt(i, 30) : 30;
@@ -428,10 +507,10 @@ final class WeatherAirQuality {
 
         // Fill fallback if empty
         if (hourly.isEmpty()) {
-            hourly.add(new HourlyItem("Now", "⛅", temp, 40));
-            hourly.add(new HourlyItem("6 PM", "⛅", temp, 35));
-            hourly.add(new HourlyItem("7 PM", "☁", temp - 1, 30));
-            hourly.add(new HourlyItem("8 PM", "☁", temp - 2, 25));
+            hourly.add(new HourlyItem("Skrg", "⛅", temp, 40));
+            hourly.add(new HourlyItem("18.00", "⛅", temp, 35));
+            hourly.add(new HourlyItem("19.00", "☁", temp - 1, 30));
+            hourly.add(new HourlyItem("20.00", "☁", temp - 2, 25));
             hourly.add(new HourlyItem("9 PM", "☁", temp - 2, 20));
         }
 
@@ -448,7 +527,7 @@ final class WeatherAirQuality {
         String aqiParam = prefs.getString(KEY_AQI_PARAM, "PM2.5");
         String stationPlace = prefs.getString(KEY_AQI_STATION_PLACE, AppLocationManager.getStationPlace(context));
         String stationId = AppLocationManager.getStationId(context);
-        String locationName = AppLocationManager.getLocationName(context).toUpperCase(Locale.ROOT);
+        String locationName = getCityName(context).toUpperCase(Locale.ROOT);
 
         double pm25 = aqi * 0.45;
         double pm10 = aqi * 0.55;
@@ -508,9 +587,7 @@ final class WeatherAirQuality {
     }
 
     private static String formatHourLabel(int hour24) {
-        String ampm = hour24 < 12 ? "AM" : "PM";
-        int hh = hour24 % 12 == 0 ? 12 : hour24 % 12;
-        return hh + " " + ampm;
+        return String.format(Locale.ROOT, "%02d.00", hour24);
     }
 
     private static String getWeatherCondition(int code, boolean isMalay) {

@@ -372,6 +372,8 @@
                     android:orientation="vertical"
                     android:gravity="end"
                     android:background="@drawable/weather_card"
+                    android:focusable="true"
+                    android:clickable="true"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
                     android:paddingTop="8dp"
@@ -430,7 +432,7 @@
                     android:ellipsize="end"
                     android:text="@string/wifi"
                     android:drawableStart="@drawable/ic_wifi"
-                    android:nextFocusDown="@+id/grid" />
+                    android:nextFocusDown="@+id/weatherCard" />
 
                 <TextView
                     android:id="@+id/btnReorder"

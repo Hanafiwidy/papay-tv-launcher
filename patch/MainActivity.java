@@ -55,6 +55,7 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
+import android.text.InputType;
 import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -64,9 +65,13 @@ import android.view.SoundEffectConstants;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.FrameLayout;
+import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -189,9 +194,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean lunar;
     private int lunarOffset;
     private TextView stats;
-    /** Cuaca/AQI Jakarta dan lalu lintas data Wi-Fi di bawah header (hanya tampilan, tidak bisa fokus). */
+    /** Cuaca/AQI (kota bisa diganti lewat panel detail) dan lalu lintas data Wi-Fi di bawah header. */
     private TextView weatherHome;
     private TextView weatherTomorrow;
+    private LinearLayout weatherCard;
     private TextView trafficHome;
     /** Wi-Fi in/out, sampled once a second while Home is in front. */
     private final NetTraffic traffic = new NetTraffic();
@@ -502,6 +508,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         lunarDate = findViewById(R.id.lunarDate);
         weatherHome = findViewById(R.id.weatherHome);
         weatherTomorrow = findViewById(R.id.weatherTomorrow);
+        // Clicking the card opens the weather detail panel (24 hours, 7 days, city switcher).
+        weatherCard = findViewById(R.id.weatherCard);
+        weatherCard.setOnClickListener(v -> showWeatherPanel());
+        weatherCard.setOnFocusChangeListener((v, focused) -> v.animate()
+                .scaleX(focused ? 1.05f : 1f).scaleY(focused ? 1.05f : 1f)
+                .setDuration(reducedMotion ? Motion.REDUCED_MS : 120)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start());
         trafficHome = findViewById(R.id.trafficHome);
         updateStatusRow();
         // The weather cache is cheap: it only hits the network when due.
@@ -2460,7 +2473,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Cuaca/AQI Jakarta dan lalu lintas Wi-Fi; dipanggil saat Home dibuat, saat kembali, dan berkala. */
     private void updateStatusRow() {
         if (weatherHome != null) {
-            SpannableStringBuilder line = new SpannableStringBuilder("JAKARTA \u00B7 ");
+            SpannableStringBuilder line = new SpannableStringBuilder(
+                    WeatherAirQuality.getCityName(this).toUpperCase(Locale.ROOT) + " \u00B7 ");
             line.append(WeatherAirQuality.getFormatted(this));
             weatherHome.setText(line);
         }
@@ -3034,6 +3048,293 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return -1;
     }
 
+    // ---- weather detail panel -----------------------------------------------------------------------
+
+    /**
+     * The weather card is a widget, not a button: pressing it opens this glass panel with the current
+     * condition, a 24-hour strip, the 7-day list and the city switcher, like a phone weather app.
+     */
+    private void showWeatherPanel() {
+        if (openPopup != null) return;
+        View panelView = getLayoutInflater().inflate(R.layout.popup_menu, root, false);
+        LinearLayout rows = panelView.findViewById(R.id.rows);
+        final PopupWindow popup = glassPopup(panelView, (int) (440 * density));
+        popup.setInputMethodMode(PopupWindow.INPUT_METHOD_NEEDED); // city search needs the IME
+        fillWeatherMain(rows, popup);
+        capMenuHeight(panelView, weatherCard);
+        panelView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        popup.setWidth((int) (440 * density));
+        dropIn(popup, panelView, weatherCard, Gravity.END);
+        View first = rows.getChildAt(0);
+        if (first != null) first.requestFocus();
+        // The cache refetches every 30 minutes; if it lands while the panel is open (and no city is
+        // being typed), rebuild the rows so the panel shows the fresh numbers.
+        WeatherAirQuality.syncIfDue(this, () -> {
+            if (popup.isShowing() && "main".equals(rows.getTag())) fillWeatherMain(rows, popup);
+        });
+    }
+
+    /** Current conditions header, hourly strip and the 7-day list of the panel. */
+    private void fillWeatherMain(LinearLayout rows, PopupWindow popup) {
+        rows.setTag("main");
+        WeatherAirQuality.FullWeather w = WeatherAirQuality.getFullWeather(this);
+        rows.removeAllViews();
+
+        addPanelRow(rows, R.drawable.ic_home_settings, "Lokasi: " + w.location,
+                () -> fillWeatherSearch(rows, popup));
+
+        TextView now = new TextView(this);
+        now.setText(w.icon + "  " + w.temp + "°  " + w.condition);
+        now.setTextColor(0xFFFFFFFF);
+        now.setTextSize(26);
+        now.setTypeface(UiFont.get(this, R.string.font_medium));
+        now.setPadding((int) (12 * density), (int) (10 * density), (int) (12 * density), (int) (4 * density));
+        now.setFocusable(false);
+        rows.addView(now);
+
+        TextView facts = new TextView(this);
+        facts.setText("Terasa " + w.apparentTemp + "°  ·  Lembap " + w.humidity + "%  ·  Angin "
+                + w.windSpeed + " km/h  ·  Hujan hari ini " + w.rainChanceToday + "%\n"
+                + "Terbit " + w.sunrise + "  ·  Terbenam " + w.sunset + "  ·  UV " + w.uvIndex
+                + "  ·  AQI " + w.aqi + " " + w.aqiStatus);
+        facts.setTextColor(0xA6FFFFFF);
+        facts.setTextSize(12);
+        facts.setLineSpacing(0f, 1.25f);
+        facts.setPadding((int) (12 * density), 0, (int) (12 * density), (int) (8 * density));
+        facts.setFocusable(false);
+        rows.addView(facts);
+
+        addSeparator(rows);
+        rows.addView(sectionLabel("24 JAM KE DEPAN"));
+        rows.addView(hourlyStrip(w.hourly));
+
+        addSeparator(rows);
+        rows.addView(sectionLabel("7 HARI KE DEPAN"));
+        for (WeatherAirQuality.DailyItem d : w.daily) rows.addView(dailyRow(d));
+    }
+
+    /** Labels between sections of the panel. */
+    private TextView sectionLabel(String text) {
+        TextView label = new TextView(this);
+        label.setText(text);
+        label.setTextColor(0x80FFFFFF);
+        label.setTextSize(10);
+        label.setLetterSpacing(0.08f);
+        label.setTypeface(UiFont.get(this, R.string.font_medium));
+        label.setPadding((int) (12 * density), (int) (10 * density), (int) (12 * density), (int) (2 * density));
+        label.setFocusable(false);
+        return label;
+    }
+
+    /** One glass cell per hour, laid out in a strip that the D-pad scrolls sideways through. */
+    private View hourlyStrip(List<WeatherAirQuality.HourlyItem> items) {
+        HorizontalScrollView scroller = new HorizontalScrollView(this);
+        scroller.setHorizontalScrollBarEnabled(false);
+        LinearLayout strip = new LinearLayout(this);
+        strip.setOrientation(LinearLayout.HORIZONTAL);
+        strip.setPadding((int) (6 * density), 0, (int) (6 * density), (int) (2 * density));
+        for (WeatherAirQuality.HourlyItem item : items) {
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            cell.setBackgroundResource(R.drawable.input_row_bg);
+            cell.setPadding((int) (11 * density), (int) (7 * density), (int) (11 * density), (int) (6 * density));
+            cell.setFocusable(true);
+
+            // The hour on top so each cell reads "which hour - what falls - how likely".
+            TextView hour = new TextView(this);
+            hour.setText(item.time);
+            hour.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            hour.setTextSize(9);
+            hour.setGravity(Gravity.CENTER);
+            hour.setFocusable(false);
+            hour.setDuplicateParentStateEnabled(true);
+            cell.addView(hour);
+
+            TextView icon = new TextView(this);
+            icon.setText(item.icon);
+            icon.setTextSize(18);
+            icon.setGravity(Gravity.CENTER);
+            icon.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            icon.setFocusable(false);
+            icon.setDuplicateParentStateEnabled(true);
+            cell.addView(icon);
+
+            TextView temp = new TextView(this);
+            temp.setText(item.temp + "°");
+            temp.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            temp.setTextSize(13);
+            temp.setGravity(Gravity.CENTER);
+            temp.setTypeface(UiFont.get(this, R.string.font_medium));
+            temp.setFocusable(false);
+            temp.setDuplicateParentStateEnabled(true);
+            cell.addView(temp);
+
+            TextView rain = new TextView(this);
+            rain.setText(item.rainChance + "%");
+            rain.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            rain.setTextSize(10);
+            rain.setGravity(Gravity.CENTER);
+            rain.setFocusable(false);
+            rain.setDuplicateParentStateEnabled(true);
+            cell.addView(rain);
+
+            strip.addView(cell);
+        }
+        scroller.addView(strip);
+        return scroller;
+    }
+
+    /** One row per forecast day: name, rain chance, max/min. */
+    private View dailyRow(WeatherAirQuality.DailyItem d) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackgroundResource(R.drawable.input_row_bg);
+        row.setPadding((int) (12 * density), (int) (7 * density), (int) (12 * density), (int) (7 * density));
+        row.setFocusable(true);
+
+        TextView day = new TextView(this);
+        day.setText(d.day);
+        // White text turns near-black on the focused selector, same trick as item_input.
+        day.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        day.setDuplicateParentStateEnabled(true);
+        day.setTextSize(14);
+        day.setTypeface(UiFont.get(this, R.string.font_medium));
+        row.addView(day, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView rain = new TextView(this);
+        rain.setText(d.icon + " " + d.rainChance + "%");
+        rain.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        rain.setDuplicateParentStateEnabled(true);
+        rain.setTextSize(12);
+        rain.setGravity(Gravity.END);
+        row.addView(rain, new LinearLayout.LayoutParams(
+                (int) (78 * density), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView temps = new TextView(this);
+        temps.setText(d.maxTemp + "° / " + d.minTemp + "°");
+        temps.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        temps.setDuplicateParentStateEnabled(true);
+        temps.setTextSize(13);
+        temps.setTypeface(UiFont.get(this, R.string.font_medium));
+        temps.setGravity(Gravity.END);
+        row.addView(temps, new LinearLayout.LayoutParams(
+                (int) (88 * density), ViewGroup.LayoutParams.WRAP_CONTENT));
+        return row;
+    }
+
+    /** City switcher: back row, a search box using the leanback IME, then geocode results. */
+    private void fillWeatherSearch(LinearLayout rows, PopupWindow popup) {
+        rows.setTag("search");
+        rows.removeAllViews();
+        WeatherAirQuality.FullWeather w = WeatherAirQuality.getFullWeather(this);
+
+        addPanelRow(rows, R.drawable.ic_home_settings, "Kembali ke " + w.location,
+                () -> fillWeatherMain(rows, popup));
+
+        rows.addView(sectionLabel("KETIK NAMA KOTA"));
+
+        final EditText search = new EditText(this);
+        search.setHint("Misal: Bandung, Surabaya, Medan");
+        search.setSingleLine(true);
+        search.setInputType(InputType.TYPE_CLASS_TEXT);
+        search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        search.setTextColor(0xFFFFFFFF);
+        search.setHintTextColor(0x4DFFFFFF);
+        search.setTextSize(15);
+        search.setTypeface(UiFont.get(this, R.string.font_medium));
+        search.setPadding((int) (12 * density), (int) (9 * density), (int) (12 * density), (int) (9 * density));
+        search.setBackgroundResource(R.drawable.input_row_bg);
+        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        searchLp.setMargins((int) (8 * density), (int) (4 * density), (int) (8 * density), (int) (4 * density));
+        rows.addView(search, searchLp);
+
+        final LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        rows.addView(results, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        final Runnable goFind = () -> {
+            final String query = search.getText().toString();
+            new Thread(() -> {
+                final List<WeatherAirQuality.GeoCity> cities = WeatherAirQuality.geocodeSync(query);
+                handler.post(() -> {
+                    if (!popup.isShowing()) return;
+                    results.removeAllViews();
+                    if (cities.isEmpty()) {
+                        results.addView(sectionLabel("Tidak ketemu — coba ejaan lain"));
+                    }
+                    for (int i = 0; i < cities.size(); i++) {
+                        final WeatherAirQuality.GeoCity city = cities.get(i);
+                        View row = cityRow(city, () -> {
+                            WeatherAirQuality.setCity(this, city, this::updateStatusRow);
+                            popup.dismiss();
+                        });
+                        results.addView(row);
+                        if (i == 0) row.requestFocus();
+                    }
+                });
+            }, "weather-geo").start();
+        };
+
+        search.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH
+                    || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                        && (event.getAction() == KeyEvent.ACTION_DOWN))) {
+                goFind.run();
+                return true;
+            }
+            return false;
+        });
+
+        // Open the leanback IME shortly after the panel settles; the pairing code keyboard of the
+        // Google TV phone app types into this field the same way.
+        search.requestFocus();
+        popup.getContentView().postDelayed(() -> {
+            if (!popup.isShowing()) return;
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(search, InputMethodManager.SHOW_IMPLICIT);
+        }, 250);
+    }
+
+    /** One geocode result: city name on top, region under it, OK switches the whole card. */
+    private View cityRow(WeatherAirQuality.GeoCity city, Runnable choose) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setBackgroundResource(R.drawable.input_row_bg);
+        row.setPadding((int) (12 * density), (int) (8 * density), (int) (12 * density), (int) (7 * density));
+        row.setFocusable(true);
+        row.setClickable(true);
+        row.setOnClickListener(v -> choose.run());
+
+        TextView name = new TextView(this);
+        name.setText("\uD83D\uDCCD " + city.name + (TextUtils.isEmpty(city.country) ? "" : " — " + city.country));
+        name.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        name.setTextSize(14);
+        name.setTypeface(UiFont.get(this, R.string.font_medium));
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setFocusable(false);
+        name.setDuplicateParentStateEnabled(true);
+        row.addView(name);
+
+        TextView region = new TextView(this);
+        region.setText(TextUtils.isEmpty(city.admin1) ? city.name : city.admin1 + "  ·  lat "
+                + String.format(Locale.ROOT, "%.2f  lon %.2f", city.lat, city.lon));
+        region.setTextColor(0x80FFFFFF);
+        region.setTextSize(11);
+        region.setSingleLine(true);
+        region.setEllipsize(TextUtils.TruncateAt.END);
+        region.setFocusable(false);
+        region.setDuplicateParentStateEnabled(true);
+        row.addView(region);
+        return row;
+    }
+
+
     /**
      * Row labels for the wallpaper list. Two themes ship the same picture name ("01_aurora_4k"), so a
      * name that repeats keeps the theme's own number: "Aurora 4k 1", "Aurora 4k 2".
@@ -3464,6 +3765,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int m = (int) (6 * density), h = (int) (12 * density);
         lp.setMargins(h, m, h, m);
         rows.addView(line, lp);
+    }
+
+    /** Like addInputRow but the panel stays open: used by the weather panel's own screens. */
+    private void addPanelRow(LinearLayout rows, int iconRes, String title, Runnable action) {
+        View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) row.findViewById(R.id.icon)).setImageResource(iconRes);
+        ((TextView) row.findViewById(R.id.title)).setText(title);
+        row.findViewById(R.id.status).setVisibility(View.GONE);
+        row.findViewById(R.id.dot).setVisibility(View.GONE);
+        row.setOnClickListener(v -> action.run());
+        rows.addView(row);
+        return;
     }
 
     private void addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, int state, Runnable action) {
