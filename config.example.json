@@ -17,6 +17,8 @@
   "app_glow": false,
   "glow_style": "horizon",
   "dock_glass": true,
+  "tile_menu": true,
+  "reorder_button": true,
   "icon_only_buttons": true,
   "wifi_label_width": 200,
   "focus_overshoot": false,

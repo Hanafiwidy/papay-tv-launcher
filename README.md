@@ -2,7 +2,7 @@
 
 A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv) launcher (v2.7, versionCode 8) with a Liquid Glass look, Jakarta weather, PS5-style navigation sounds, and a wallpaper-synced idle screensaver. Built and tested on a **TCL BeyondTV (Android TV 9, API 28)**.
 
-![Home](screenshots/jakarta-home-2026-10-27.png)
+![Home](screenshots/papay-home-2026-11-05.png)
 
 ## Features
 
@@ -15,12 +15,13 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 - **Wallpaper picker** with a rotating collection; the last displayed picture is saved and survives reboots, and Home and the screensaver always show that same picture.
 - **Idle screensaver** (`dream_clock.xml` + `ClockScene.java`): huge thin clock, greeting, date, and a glass weather card over the current wallpaper, dimmed by `clock_wallpaper_dim`.
 - **No color gradients**: hero art, scrim, ambient glow, and app glow disabled so the wallpaper shows clean.
+- **Move apps around** (on by default): hold OK on any tile for the glass menu - *Tambah ke dock*, *Pindahkan*, *Info aplikasi* - or press the two-arrow button in the top bar to enter reorder mode directly. The saved order survives reboots and is written to `files/order.json`.
 
 ## Files
 
 | Path | What it is |
 |---|---|
-| `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (635 KB) |
+| `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (626 KB) |
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
 | `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |
 | `sounds/` | Navigation sound packs baked into the APK: PS5 (default), Nintendo Switch, Xbox |
@@ -65,6 +66,17 @@ adb shell input keyevent 3
 
 Then set the launcher as Home and enable "Table clock / Daydream" in the TV's Screen settings (idle 5 min). The sounds (`ps5_nav.wav`, `ps5_select.wav`, ...) are already compiled into the APK (`res/raw`); they sit in `sounds/` only so you can rebuild with a different pack. PS5 is the default set used at runtime.
 
+## Rearranging apps
+
+The order you set on screen is the order the launcher keeps, across reboots too.
+
+1. Focus a tile and **hold OK** (or press the **two-arrow button** in the top bar to start reorder mode).
+2. Pick **Pindahkan** / press OK on a tile - it is picked up.
+3. Move it with the arrow keys (Up / Down between rows, Left / Right along the row).
+4. Press **Back** to drop it where it is, then **Back** again to finish. The order is saved to `files/order.json`.
+
+From the same hold-OK menu: **Tambah ke dock** puts a grid app into the dock row, **Ganti dengan aplikasi lain** swaps a dock tile, and **Info aplikasi** opens the TV's app page.
+
 ## Key config options
 
 - `greeting_name` - name shown in the greeting (Home + screensaver).
@@ -73,6 +85,8 @@ Then set the launcher as Home and enable "Table clock / Daydream" in the TV's Sc
 - `home_idle_clock_minutes` - screensaver idle delay.
 - `cinematic_art` / `cinematic_scrim` / `ambient_glow` / `app_glow` - all set to 0/off for a clean, gradient-free look.
 - `wallpaper_choice` - default wallpaper when no saved choice exists.
+- `tile_menu` - hold OK on a tile opens the move/dock/app-info menu (on by default here).
+- `reorder_button` - shows the two-arrow reorder button in the top bar (on by default here).
 
 ## Notes for your own TV
 
@@ -83,8 +97,9 @@ Then set the launcher as Home and enable "Table clock / Daydream" in the TV's Sc
 ## Rebuilding from source
 
 1. Clone `Gathin23/cleanyourtv` v2.7.
-2. Replace the files under `app/src/main/...` with those in `patch/` (paths mirror the upstream tree).
-3. `./gradlew assembleRelease` (JDK 17).
+2. Replace the files under `app/src/main/...` with those in `patch/` (paths mirror the upstream tree). `config.xml`, `strings.xml`, `weather_card.xml` and `dream_scrim.xml` go to `res/values/`, `res/values-in/` and `res/drawable/` respectively.
+3. Copy `sounds/*.wav` into `app/src/main/res/raw/` (the APK needs them; `sounds/` keeps the packs).
+4. `./gradlew assembleRelease` (JDK 17). The release build is signed with the debug key, the same as the APK here.
 
 ## Credits & notes
 
