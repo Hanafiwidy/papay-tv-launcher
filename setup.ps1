@@ -56,6 +56,11 @@ $cfgText = Get-Content $cfgEx -Raw
 if ($GreetingName -ne "") {
     $cfgText = $cfgText -replace '"greeting_name": "NAMA KAMU"', ('"greeting_name": "' + $GreetingName + '"')
 }
+# Buang dock yang tidak terpasang di TV ini; tile aplikasi yang tidak ada tidak bisa dibuka.
+$installed = (Sh "pm list packages") | ForEach-Object { $_ -replace '^package:', '' }
+$cfg = $cfgText | ConvertFrom-Json
+$cfg.dock_apps = @($cfg.dock_apps | Where-Object { $installed -contains $_ })
+$cfgText = $cfg | ConvertTo-Json -Depth 6
 [System.IO.File]::WriteAllText($cfgLocal, $cfgText, (New-Object System.Text.UTF8Encoding($false)))
 & $Adb -s $dev push $cfgLocal /sdcard/Android/data/com.gathin.tvhome/files/config.json
 
