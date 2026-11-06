@@ -23,6 +23,8 @@ $dev = "${TvHost}:5555"
 & $Adb connect $dev | Out-Null
 Start-Sleep -Seconds 2
 
+& $Adb -s $dev shell "pm enable com.google.android.tvlauncher" | Out-Null
+
 Get-Content $pkgList | ForEach-Object {
     $pkg = ($_ -split '#')[0].Trim()
     if ($pkg -ne "") {

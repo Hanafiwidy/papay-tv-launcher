@@ -62,9 +62,11 @@ if ($GreetingName -ne "") {
 if (-not $SkipWallpapers) {
     Write-Host "== 4/6 push wallpapers =="
     Get-ChildItem (Join-Path $repo "wallpapers") -Directory | ForEach-Object {
-        $dest = "/sdcard/Android/data/com.gathin.tvhome/files/wallpapers/" + $_.Name
+        $dest = "/sdcard/Android/data/com.gathin.tvhome/files/wallpapers"
         & $Adb -s $dev shell "mkdir -p '$dest'" | Out-Null
-        & $Adb -s $dev push $_.FullName\* $dest | Out-Null
+        Get-ChildItem $_.FullName -File | ForEach-Object {
+            & $Adb -s $dev push $_.FullName $dest | Out-Null
+        }
         Write-Host ("  pushed " + $_.Name)
     }
 } else { Write-Host "== 4/6 dilewati (-SkipWallpapers) ==" }
@@ -76,8 +78,18 @@ Sh "cmd package set-home-activity com.gathin.tvhome/.MainActivity"
 Sh "settings put secure screensaver_components com.gathin.tvhome/.ClockDream"
 Sh "settings put secure screensaver_enabled 1"
 # cek benar-benar fokus di launcher baru sebelum menyentuh paket lain
-$focus = (Sh "dumpsys activity activities | grep -m1 mFocusedApp")
+$focus = (Sh "dumpsys activity activities | grep mFocusedApp") -join " "
 Write-Host "  fokus sekarang: $focus"
+if ($focus -notlike "*com.gathin.tvhome*") {
+    # Android 11 Google TV: tvlauncher sering punya priority lebih tinggi, jadi set-home-activity
+    # kalah. Matikan dulu (disable-user, bisa dibalik), lalu cek lagi.
+    Write-Host "  stock launcher masih menang; menonaktifkan com.google.android.tvlauncher (bisa dibalik)"
+    & $Adb -s $dev shell "pm disable-user --user 0 com.google.android.tvlauncher" | Out-Null
+    & $Adb -s $dev shell "input keyevent 3" | Out-Null
+    Start-Sleep -Seconds 3
+    $focus = (Sh "dumpsys activity activities | grep mFocusedApp") -join " "
+    Write-Host "  fokus sekarang: $focus"
+}
 if ($focus -notlike "*com.gathin.tvhome*") {
     Write-Host "PERINGATAN: launcher baru belum jadi Home. Paket TIDAK di-disable. Coba lagi setelah reboot."
     exit 1
