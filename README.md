@@ -2,7 +2,7 @@
 
 A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv) launcher (v2.7, versionCode 8) with a Liquid Glass look, Jakarta weather, PS5-style navigation sounds, and a wallpaper-synced idle screensaver. Built and tested on a **TCL BeyondTV (Android TV 9, API 28)**.
 
-![Home](screenshots/papay-home-2026-11-05.png)
+![Home](screenshots/papay-home-2026-11-06.png)
 
 ## Features
 
@@ -15,7 +15,7 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 - **Wallpaper picker** with a rotating collection; the last displayed picture is saved and survives reboots, and Home and the screensaver always show that same picture.
 - **Idle screensaver** (`dream_clock.xml` + `ClockScene.java`): huge thin clock, greeting, date, and a glass weather card over the current wallpaper, dimmed by `clock_wallpaper_dim`.
 - **No color gradients**: hero art, scrim, ambient glow, and app glow disabled so the wallpaper shows clean.
-- **Move apps around** (on by default): hold OK on any tile for the glass menu - *Tambah ke dock*, *Pindahkan*, *Info aplikasi* - or press the two-arrow button in the top bar to enter reorder mode directly. The saved order survives reboots and is written to `files/order.json`.
+- **Move apps around** (on by default): hold OK on any tile for the glass menu - *Ganti dengan aplikasi lain*, *Pindahkan*, *Info aplikasi*. Pick **Pindahkan**, move the tile with the arrows, **Back** to drop it and **Back** again to finish. The saved order survives reboots and is written to `files/order.txt`.
 
 ## Files
 
@@ -70,12 +70,12 @@ Then set the launcher as Home and enable "Table clock / Daydream" in the TV's Sc
 
 The order you set on screen is the order the launcher keeps, across reboots too.
 
-1. Focus a tile and **hold OK** (or press the **two-arrow button** in the top bar to start reorder mode).
-2. Pick **Pindahkan** / press OK on a tile - it is picked up.
+1. Focus a tile and **hold OK**, then choose **Pindahkan**.
+2. The tile is picked up (the others dim).
 3. Move it with the arrow keys (Up / Down between rows, Left / Right along the row).
-4. Press **Back** to drop it where it is, then **Back** again to finish. The order is saved to `files/order.json`.
+4. Press **Back** to drop it where it is, then **Back** again to finish. The order is saved to `files/order.txt`.
 
-From the same hold-OK menu: **Tambah ke dock** puts a grid app into the dock row, **Ganti dengan aplikasi lain** swaps a dock tile, and **Info aplikasi** opens the TV's app page.
+From the same hold-OK menu: **Ganti dengan aplikasi lain** swaps a dock tile, and **Info aplikasi** opens the TV's app page. The two-arrow button in the top bar is off by default (`reorder_button`: false); turn it on if you want a shortcut into reorder mode.
 
 ## Key config options
 
@@ -86,7 +86,7 @@ From the same hold-OK menu: **Tambah ke dock** puts a grid app into the dock row
 - `cinematic_art` / `cinematic_scrim` / `ambient_glow` / `app_glow` - all set to 0/off for a clean, gradient-free look.
 - `wallpaper_choice` - default wallpaper when no saved choice exists.
 - `tile_menu` - hold OK on a tile opens the move/dock/app-info menu (on by default here).
-- `reorder_button` - shows the two-arrow reorder button in the top bar (on by default here).
+- `reorder_button` - shows the two-arrow reorder button in the top bar (off here; holding OK on a tile is enough).
 
 ## Notes for your own TV
 
