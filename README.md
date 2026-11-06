@@ -25,7 +25,7 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
 | `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |
 | `sounds/` | Navigation sound packs baked into the APK: PS5 (default), Nintendo Switch, Xbox |
-| `wallpapers/` | 44 wallpaper images from the glass-tv-home theme sets: `unsplash-dark-4k` (30), `mac-aerials` (11), `aurora-pixel` (3) |
+| `wallpapers/` | 30 wallpaper images: `tv-current` (1, the sunset on the TV now), `unsplash-dark-4k` (15), `mac-aerials` (11), `aurora-pixel` (3) |
 | `debloat/` | The exact package-disable list applied on TV-1 (51 packages) |
 | `screenshots/` | Home and screensaver on an actual TCL BeyondTV |
 

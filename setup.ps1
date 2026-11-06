@@ -59,6 +59,10 @@ if ($GreetingName -ne "") {
 [System.IO.File]::WriteAllText($cfgLocal, $cfgText, (New-Object System.Text.UTF8Encoding($false)))
 & $Adb -s $dev push $cfgLocal /sdcard/Android/data/com.gathin.tvhome/files/config.json
 
+# Nama Wi-Fi di pill (Android 10+ butuh izin lokasi; tanpa ini pill cuma bilang "Wi-Fi").
+& $Adb -s $dev shell "pm grant com.gathin.tvhome android.permission.ACCESS_FINE_LOCATION" | Out-Null
+& $Adb -s $dev shell "settings put secure location_mode 3" | Out-Null
+
 if (-not $SkipWallpapers) {
     Write-Host "== 4/6 push wallpapers =="
     Get-ChildItem (Join-Path $repo "wallpapers") -Directory | ForEach-Object {

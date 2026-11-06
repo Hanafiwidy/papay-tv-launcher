@@ -1,4 +1,4 @@
-{
+﻿{
   "dock_apps": [
     "com.netflix.ninja",
     "com.google.android.youtube.tv",
@@ -9,7 +9,7 @@
   ],
   "background_color": "#090C14",
   "wallpaper": true,
-  "wallpaper_choice": "01_night_earth_orbit.jpg",
+  "wallpaper_choice": "14_lakeside_sunset.jpg",
   "cinematic_home": true,
   "cinematic_art": 0,
   "cinematic_scrim": 0,
@@ -29,3 +29,4 @@
   "clock_wallpaper": true,
   "clock_wallpaper_dim": 40
 }
+
