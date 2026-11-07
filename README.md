@@ -17,12 +17,25 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 - **No color gradients**: hero art, scrim, ambient glow, and app glow disabled so the wallpaper shows clean.
 - **Move apps around** (on by default): hold OK on any tile for the glass menu - *Ganti dengan aplikasi lain*, *Pindahkan*, *Info aplikasi*. Pick **Pindahkan**, move the tile with the arrows, **Back** to drop it and **Back** again to finish. The saved order survives reboots and is written to `files/order.txt`.
 
+## One-prompt install (any Android TV 8+)
+
+Paste this into an AI agent (Claude Code, Codex, Gemini CLI, OpenCode, Cursor...):
+
+> Debloat and install the launcher on my TV at `<TV IP>`, greeting `<name>`, using
+> https://github.com/Hanafiwidy/papay-tv-launcher. Follow its `PROMPT.md` to the end.
+
+The agent follows [`PROMPT.md`](PROMPT.md): it reads the TV model, picks the matching list from
+`examples/`, runs `setup.ps1`, then checks Home, Wi-Fi and the clock after a reboot. Enabling ADB on
+the TV and accepting the RSA prompt still has to be done with the remote. Without an AI agent, run
+`setup.ps1` yourself (below).
+
 ## Files
 
 | Path | What it is |
 |---|---|
 | `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (626 KB) |
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
+| `PROMPT.md` | Agent instructions: read the TV model, pick a list, install, verify, undo |
 | `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |
 | `sounds/` | Navigation sound packs baked into the APK: PS5 (default), Nintendo Switch, Xbox |
 | `wallpapers/` | 25 wallpaper images in `tv-4k/`, all 3840x2160 JPEG (ours + picks from the MY-WALLPAPER-COLLECTION repo) |

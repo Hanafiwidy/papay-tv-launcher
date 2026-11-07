@@ -68,7 +68,7 @@ Write-Host "== 3/6 push config =="
 $cfgLocal = Join-Path $env:TEMP "mikhayla-config.json"
 $cfgText = Get-Content $cfgEx -Raw
 if ($GreetingName -ne "") {
-    $cfgText = $cfgText -replace '"greeting_name": "NAMA KAMU"', ('"greeting_name": "' + $GreetingName + '"')
+    $cfgText = $cfgText -replace '"greeting_name":\s*"[^"]*"', ('"greeting_name": "' + $GreetingName + '"')
 }
 # Buang dock yang tidak terpasang di TV ini; tile aplikasi yang tidak ada tidak bisa dibuka.
 $installed = (Sh "pm list packages") | ForEach-Object { $_ -replace '^package:', '' }
