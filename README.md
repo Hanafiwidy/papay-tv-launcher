@@ -1,4 +1,4 @@
-# Papay TV Launcher - Custom Home for TCL BeyondTV
+﻿# Papay TV Launcher - Custom Home for TCL BeyondTV
 
 A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv) launcher (v2.7, versionCode 8) with a Liquid Glass look, Jakarta weather, PS5-style navigation sounds, and a wallpaper-synced idle screensaver. Built and tested on a **TCL BeyondTV (Android TV 9, API 28)**.
 
@@ -25,17 +25,20 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
 | `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |
 | `sounds/` | Navigation sound packs baked into the APK: PS5 (default), Nintendo Switch, Xbox |
-| `wallpapers/` | 30 wallpaper images: `tv-current` (1, the sunset on the TV now), `unsplash-dark-4k` (15), `mac-aerials` (11), `aurora-pixel` (3) |
+| `wallpapers/` | 25 wallpaper images in `tv-4k/`, all 3840x2160 JPEG (ours + picks from the MY-WALLPAPER-COLLECTION repo) |
 | `debloat/` | The exact package-disable list applied on TV-1 (51 packages) |
+| `examples/` | Per-TV debloat lists from [cleanyourtv](https://github.com/Gathin23/cleanyourtv) (260 models, text only). Pick your model's folder name for `-List`. |
 | `screenshots/` | Home and screensaver on an actual TCL BeyondTV |
 
 ## Install on a fresh TV (replay kit)
 
-`setup.ps1` reproduces TV-1's exact setup - launcher + config + wallpapers + debloat - in one command:
+`setup.ps1` installs the launcher, config, wallpapers and debloat in one command. Works on any Android TV 8+ (minSdk 26); the debloat part follows your TV's model from `examples/`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File setup.ps1 -TvHost 192.168.1.50 -GreetingName "Mikhayla"
+powershell -ExecutionPolicy Bypass -File setup.ps1 -TvHost 192.168.1.50 -GreetingName "Mikhayla" -List tcl-65c735
 ```
+
+`-List` is a folder name under `examples/`; browse `examples/README.md` for your model (or pass a path to your own list). Leave `-List` out to use `debloat/packages-disabled.txt` (TV-1).
 
 Enable Network ADB debugging on the TV first, and make sure the PC and TV share one Wi-Fi network.
 
@@ -44,11 +47,11 @@ What it does, in order:
 1. `adb connect` to the TV.
 2. Installs `mikhayla-glass-home-2.7.apk` (PS5 sounds are already inside it).
 3. Builds a `config.json` from `config.example.json` and pushes it (with your greeting name).
-4. Pushes the 44 wallpapers into the app's `files/wallpapers/` dir.
+4. Pushes the 25 wallpapers into the app's `files/wallpapers/` dir.
 5. Sets the launcher as Home (`cmd package set-home-activity`) and wires the screensaver (`ClockDream`), **only then** - never before the new Home is confirmed:
-6. Runs the debloat: 51 packages from `debloat/packages-disabled.txt`, each with `pm disable-user --user 0` (never uninstall), following the cleanyourtv safety rules. Packages not present on your unit are skipped.
+6. Runs the debloat from the chosen list (`examples/<name>/debloat.txt` or `debloat/packages-disabled.txt`), each with `pm disable-user --user 0` (never uninstall), following the cleanyourtv safety rules. Packages not present on your unit are skipped.
 
-`undo.ps1` reverses everything: re-enables all 51 packages and resets the screensaver.
+`undo.ps1 -TvHost <ip> -List <same name>` reverses it: re-enables the packages and resets the screensaver.
 
 Not included: iDLIX (a third-party store APK - install it yourself if you want it) and anything carrying your personal data. Remove apps your family actually uses from the list first - the "ask before anything the family uses" rule from the base repo applies.
 
@@ -58,8 +61,7 @@ Not included: iDLIX (a third-party store APK - install it yourself if you want i
 adb connect <TV-IP>:5555
 adb install -r mikhayla-glass-home-2.7.apk
 adb push config.example.json /sdcard/Android/data/com.gathin.tvhome/files/config.json
-adb push wallpapers/unsplash-dark-4k /sdcard/Android/data/com.gathin.tvhome/files/wallpapers/
-adb push wallpapers/mac-aerials /sdcard/Android/data/com.gathin.tvhome/files/wallpapers/
+adb push wallpapers/tv-4k /sdcard/Android/data/com.gathin.tvhome/files/wallpapers/
 adb shell am force-stop com.gathin.tvhome
 adb shell input keyevent 3
 ```
@@ -104,6 +106,8 @@ From the same hold-OK menu: **Ganti dengan aplikasi lain** swaps a dock tile, an
 ## Credits & notes
 
 - Launcher base: [Gathin23/cleanyourtv](https://github.com/Gathin23/cleanyourtv)
-- Glass theme assets & wallpapers: glass-tv-home theme sets (`unsplash-dark-4k`, `mac-aerials`, `aurora-pixel` - photos sourced from Unsplash/gallery captures; see the original repo for photo credits)
+- Debloat lists in `examples/`: copied text-only from the same cleanyourtv repo (MIT); each list is per model, so pick the one that matches your TV.
+- Wallpapers: 25 4K picks from [Gylmynnn/MY-WALLPAPER-COLLECTION](https://github.com/Gylmynnn/MY-WALLPAPER-COLLECTION), converted to 3840x2160; see that repo for photo credits
 - **PS5 / Switch / Xbox sounds are not ours**: they are Sony/Nintendo/Microsoft UI sounds, kept here for personal use on your own TV. Don't use them commercially.
 - Weather data: [Open-Meteo](https://open-meteo.com/)
+

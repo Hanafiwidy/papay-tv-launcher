@@ -1,11 +1,14 @@
 # =====================================================================
 # Papay TV Launcher - setup lengkap satu perintah untuk TV baru
 # =====================================================================
-# Hasilnya identik dengan TV-1: launcher glass + suara PS5 + wallpaper +
-# screensaver + debloat 51 paket (disable saja, semua bisa dibalik).
+# Launcher glass + suara PS5 + 25 wallpaper 4K + screensaver, plus debloat
+# per model TV (disable saja, semua bisa dibalik).
 #
 # Pakai:
-#   powershell -ExecutionPolicy Bypass -File setup.ps1 -TvHost 192.168.1.XXX
+#   powershell -ExecutionPolicy Bypass -File setup.ps1 -TvHost 192.168.1.XXX -List tcl-65c735
+#
+# -List = nama folder di examples\ (lihat examples\README.md untuk daftar TV
+# yang sudah teruji). Tanpa -List, dipakai debloat\packages-disabled.txt (TV-1).
 #
 # Sebelum jalan:
 #   1. TV harus sudah aktif "Network ADB debugging"/USB debugging
@@ -20,6 +23,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$TvHost,          # contoh: 192.168.1.50
     [string]$GreetingName = "",                             # kosong = pakai config.example.json apa adanya
+    [string]$List = "",                                     # nama folder di examples\ atau path file list
     [string]$Adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe",
     [switch]$SkipDebloat,
     [switch]$SkipWallpapers
@@ -29,11 +33,21 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
 $apk    = Join-Path $repo "mikhayla-glass-home-2.7.apk"
 $cfgEx  = Join-Path $repo "config.example.json"
+# Daftar debloat: -List bisa nama folder examples\ (mis. tcl-65c735) atau path file.
 $pkgList = Join-Path $repo "debloat\packages-disabled.txt"
+if ($List -ne "") {
+    if (Test-Path $List) { $pkgList = (Resolve-Path $List).Path }
+    else { $pkgList = Join-Path $repo ("examples\" + $List + "\debloat.txt") }
+}
 
 if (-not (Test-Path $Adb))   { Write-Host "adb tidak ketemu di $Adb"; exit 1 }
 if (-not (Test-Path $apk))   { Write-Host "APK tidak ketemu"; exit 1 }
 if (-not (Test-Path $cfgEx)) { Write-Host "config.example.json tidak ketemu"; exit 1 }
+if (-not $SkipDebloat -and -not (Test-Path $pkgList)) {
+    Write-Host "Daftar debloat tidak ketemu: $pkgList"
+    Write-Host "Pilih folder dari examples\ (mis. -List tcl-65c735); daftar TV ada di examples\README.md"
+    exit 1
+}
 $dev = "${TvHost}:5555"
 
 function Sh($cmd) {
@@ -105,7 +119,7 @@ if ($focus -notlike "*com.gathin.tvhome*") {
 }
 
 if (-not $SkipDebloat) {
-    Write-Host "== 6/6 debloat (disable saja, bisa di-undo) =="
+    Write-Host "== 6/6 debloat dari $pkgList (disable saja, bisa di-undo) =="
     $disabled = 0; $failed = @()
     Get-Content $pkgList | ForEach-Object {
         $pkg = ($_ -split '#')[0].Trim()
@@ -124,4 +138,6 @@ Write-Host "Selesai. Reboot TV sekali, lalu cek:"
 Write-Host "  - Home tampil glass + sapaan nama"
 Write-Host "  - YouTube, Netflix, dan app inti masih jalan"
 Write-Host "  - diam 5 menit di Home -> screensaver dengan wallpaper yang sama"
-Write-Host "Balikin semuanya: powershell -ExecutionPolicy Bypass -File undo.ps1 -TvHost $TvHost"
+$undoHint = "Balikin semuanya: powershell -ExecutionPolicy Bypass -File undo.ps1 -TvHost $TvHost"
+if ($List -ne "") { $undoHint += " -List $List" }
+Write-Host $undoHint
