@@ -75,14 +75,20 @@ public class NowPlayingCard extends FrameLayout {
     /** Artwork URL on screen (or being fetched); an empty string when there is none. */
     private String artUrl = "";
 
+    /** The player creates its session lazily, so a token can be missing right after connecting. */
+    private final Runnable sessionRetry = new Runnable() {
+        @Override
+        public void run() {
+            if (browser == null || controller != null) return;
+            attach(browser.getSessionToken());
+        }
+    };
+
     private final MediaBrowser.ConnectionCallback connectionCallback = new MediaBrowser.ConnectionCallback() {
         @Override
         public void onConnected() {
             if (browser == null) return;
-            MediaSession.Token token = browser.getSessionToken();
-            controller = new MediaController(getContext(), token);
-            controller.registerCallback(controllerCallback);
-            render();
+            attach(browser.getSessionToken());
         }
 
         @Override
@@ -97,6 +103,26 @@ public class NowPlayingCard extends FrameLayout {
             showEmpty();
         }
     };
+
+    /** Mirrors the session, or keeps asking for it until the player has one. A null token must never reach MediaController. */
+    private void attach(MediaSession.Token token) {
+        if (token == null) {
+            showEmpty();
+            handler.removeCallbacks(sessionRetry);
+            handler.postDelayed(sessionRetry, 4000L);
+            return;
+        }
+        try {
+            controller = new MediaController(getContext(), token);
+            controller.registerCallback(controllerCallback);
+            render();
+        } catch (RuntimeException e) {
+            controller = null;
+            showEmpty();
+            handler.removeCallbacks(sessionRetry);
+            handler.postDelayed(sessionRetry, 4000L);
+        }
+    }
 
     private final MediaController.Callback controllerCallback = new MediaController.Callback() {
         @Override
@@ -113,6 +139,9 @@ public class NowPlayingCard extends FrameLayout {
         public void onSessionDestroyed() {
             releaseController();
             showEmpty();
+            // A fresh session may appear later (the player keeps running); keep polling for one.
+            handler.removeCallbacks(sessionRetry);
+            handler.postDelayed(sessionRetry, 4000L);
         }
     };
 
@@ -209,6 +238,7 @@ public class NowPlayingCard extends FrameLayout {
     /** Release the player's process when Home goes away; playback itself is untouched. */
     void stop() {
         handler.removeCallbacks(ticker);
+        handler.removeCallbacks(sessionRetry);
         releaseController();
         if (browser != null) {
             try {
