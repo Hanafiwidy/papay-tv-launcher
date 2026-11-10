@@ -22,6 +22,7 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 - **Idle screensaver** (`dream_clock.xml` + `ClockScene.java`): huge thin clock, greeting, date, and a glass weather card over the current wallpaper, dimmed by `clock_wallpaper_dim`.
 - **No color gradients**: hero art, scrim, ambient glow, and app glow disabled so the wallpaper shows clean.
 - **Move apps around** (on by default): hold OK on any tile for the glass menu - *Ganti dengan aplikasi lain*, *Pindahkan*, *Info aplikasi*. Pick **Pindahkan**, move the tile with the arrows, **Back** to drop it and **Back** again to finish. The saved order survives reboots and is written to `files/order.txt`.
+- **Now playing card** (`now_playing`): a glass card over the free wallpaper between the header and the dock showing the current BitChord TV track (cover, title, artist, progress). OK plays/pauses, Left/Right previous/next, hold OK opens BitChord. It never auto-hides; with no session it says *Nothing playing* and OK opens BitChord.
 
 ## One-prompt install (any Android TV 8+)
 
@@ -39,7 +40,7 @@ the TV and accepting the RSA prompt still has to be done with the remote. Withou
 
 | Path | What it is |
 |---|---|
-| `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (626 KB) |
+| `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (506 KB) |
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
 | `PROMPT.md` | Agent instructions: read the TV model, pick a list, install, verify, undo |
 | `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |
@@ -98,6 +99,23 @@ The order you set on screen is the order the launcher keeps, across reboots too.
 
 From the same hold-OK menu: **Ganti dengan aplikasi lain** swaps a dock tile, and **Info aplikasi** opens the TV's app page. The two-arrow button in the top bar is off by default (`reorder_button`: false); turn it on if you want a shortcut into reorder mode.
 
+## Now playing card
+
+The glass panel on the right, between the header and the dock, mirrors the media session of
+**BitChord TV** (`com.music.bitchord.tv`). Reach it with **Up** from the tile under it.
+
+| Remote | What it does |
+|---|---|
+| OK | Play / pause |
+| Left / Right | Previous / next track |
+| hold OK | Open BitChord |
+| Up / Down | Leave the card |
+
+It is always on screen (`now_playing`: true); the empty state (*Nothing playing*) is what you see when
+BitChord is force-closed, and OK there opens BitChord. The card only binds while Home is visible, so it
+doesn't keep the player's process alive in the background. It needs BitChord TV installed - the phone
+build is a different package and has no session for the TV remote to reach.
+
 ## Key config options
 
 - `greeting_name` - name shown in the greeting (Home + screensaver).
@@ -107,6 +125,7 @@ From the same hold-OK menu: **Ganti dengan aplikasi lain** swaps a dock tile, an
 - `cinematic_art` / `cinematic_scrim` / `ambient_glow` / `app_glow` - all set to 0/off for a clean, gradient-free look.
 - `wallpaper_choice` - default wallpaper when no saved choice exists.
 - `tile_menu` - hold OK on a tile opens the move/dock/app-info menu (on by default here).
+- `now_playing` - the now-playing card between the header and the dock (on; set false to hide it).
 - `reorder_button` - shows the two-arrow reorder button in the top bar (off here; holding OK on a tile is enough).
 - `app_keys` / `stock_home_redirect` - Xiaomi Mi/PatchWall remote fix: key 192 (Mi button) goes Home, and PatchWall is sent back to this launcher. `setup.ps1 -List xiaomi-*` turns on the launcher's key helpers for it.
 

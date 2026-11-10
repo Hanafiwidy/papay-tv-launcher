@@ -8,11 +8,9 @@
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Jadwal salat Kemenag + cuaca/AQI Open-Meteo (widget Jakarta). -->
-    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <!-- The Wi-Fi pill's dropdown scans for networks and joins one the TV already knows. -->
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- The now-playing card loads the cover from the music app's artwork URL (NowPlayingCard). -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
          runtime: build-and-install grants it with pm grant, so lint's Android 12 "ask for COARSE with
          FINE" rule does not apply here. -->
@@ -68,6 +66,8 @@
              Fire TV: the real settings menu lives in the stock launcher (see settings_fallback_components). -->
         <package android:name="com.xiaomi.mitv.settings" />
         <package android:name="com.tcl.settings" />
+        <!-- Now-playing card: bind to BitChord TV's media session (NowPlayingCard). -->
+        <package android:name="com.music.bitchord.tv" />
         <package android:name="com.amazon.tv.launcher" />
         <!-- Coocaa OS sources for the Inputs menu (coocaa_sources); see CoocaaSources. -->
         <provider android:authorities="com.skyworth.tv.provider" />

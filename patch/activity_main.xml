@@ -120,10 +120,6 @@
             android:textSize="48sp"
             android:fontFamily="@string/font_light"
             android:letterSpacing="-0.02"
-            android:shadowColor="#99000000"
-            android:shadowRadius="18"
-            android:shadowDx="0"
-            android:shadowDy="3"
             android:includeFontPadding="false"
             android:singleLine="true" />
 
@@ -191,10 +187,6 @@
                     android:textSize="12sp"
                     android:fontFamily="@string/font_medium"
                     android:letterSpacing="0.22"
-                    android:shadowColor="#B3000000"
-                    android:shadowRadius="8"
-                    android:shadowDx="0"
-                    android:shadowDy="2"
                     android:textAllCaps="true" />
 
                 <LinearLayout
@@ -213,10 +205,6 @@
                         android:textSize="52sp"
                         android:fontFamily="@string/font_light"
                         android:letterSpacing="-0.04"
-                        android:shadowColor="#A6000000"
-                        android:shadowRadius="14"
-                        android:shadowDx="0"
-                        android:shadowDy="3"
                         android:includeFontPadding="false" />
 
                     <TextClock
@@ -282,10 +270,6 @@
                             android:textSize="14sp"
                             android:fontFamily="@string/font_regular"
                             android:letterSpacing="0.14"
-                            android:shadowColor="#B3000000"
-                            android:shadowRadius="8"
-                            android:shadowDx="0"
-                            android:shadowDy="2"
                             android:textAllCaps="true" />
 
                         <!-- Lunar date ("Lunar 13/9 · Year of the Horse"), shown when lunar_date is on. -->
@@ -324,87 +308,8 @@
                 android:textSize="14sp"
                 android:fontFamily="@string/font_medium"
                 android:letterSpacing="0.04"
-                android:shadowColor="#B3000000"
-                android:shadowRadius="8"
-                android:shadowDx="0"
-                android:shadowDy="2"
                 android:focusable="false"
                 android:visibility="gone" />
-
-            <!-- Cuaca/AQI Jakarta dan lalu lintas data Wi-Fi, diperbarui tiap menit / tiap detik.
-                 Baris tampilan saja, tidak pernah mengambil fokus dari grid. Cuacanya di dalam kotak
-                 liquid glass dua baris: hari ini dan prakiraan besok. -->
-            <LinearLayout
-                android:id="@+id/prayerWeatherRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/stats"
-                android:layout_alignStart="@id/leftBlock"
-                android:layout_marginTop="6dp"
-                android:layout_marginEnd="0dp"
-                android:orientation="horizontal"
-                android:baselineAligned="false"
-                android:gravity="center_vertical"
-                android:focusable="false"
-                android:importantForAccessibility="no">
-
-                <TextView
-                    android:id="@+id/trafficHome"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:singleLine="true"
-                    android:ellipsize="end"
-                    android:textColor="#D9FFFFFF"
-                    android:textSize="12sp"
-                    android:fontFamily="@string/font_medium"
-                    android:shadowColor="#B3000000"
-                    android:shadowRadius="8"
-                    android:shadowDx="0"
-                    android:shadowDy="2"
-                    android:includeFontPadding="false" />
-
-                <LinearLayout
-                    android:id="@+id/weatherCard"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="18dp"
-                    android:orientation="vertical"
-                    android:gravity="end"
-                    android:background="@drawable/weather_card"
-                    android:focusable="true"
-                    android:clickable="true"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
-
-                    <TextView
-                        android:id="@+id/weatherHome"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:maxWidth="360dp"
-                        android:singleLine="true"
-                        android:ellipsize="end"
-                        android:textColor="#B3FFFFFF"
-                        android:textSize="12sp"
-                        android:fontFamily="@string/font_medium"
-                        android:includeFontPadding="false" />
-
-                    <TextView
-                        android:id="@+id/weatherTomorrow"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:maxWidth="360dp"
-                        android:singleLine="true"
-                        android:ellipsize="end"
-                        android:textColor="#99FFFFFF"
-                        android:textSize="11sp"
-                        android:fontFamily="@string/font_medium"
-                        android:includeFontPadding="false" />
-                </LinearLayout>
-            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/topButtons"
@@ -432,7 +337,7 @@
                     android:ellipsize="end"
                     android:text="@string/wifi"
                     android:drawableStart="@drawable/ic_wifi"
-                    android:nextFocusDown="@+id/weatherCard" />
+                    android:nextFocusDown="@+id/grid" />
 
                 <TextView
                     android:id="@+id/btnReorder"
@@ -480,6 +385,17 @@
                 android:descendantFocusability="afterDescendants" />
         </FrameLayout>
     </LinearLayout>
+
+    <!-- Now playing card (config.xml, now_playing): a glass panel over the free wallpaper between the header
+         and the dock. Position and size live here; nothing else depends on them. Empty when no app has a
+         media session, and it stays that way without an auto-hide. -->
+    <com.gathin.tvhome.NowPlayingCard
+        android:id="@+id/nowPlaying"
+        android:layout_width="350dp"
+        android:layout_height="120dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="256dp"
+        android:layout_marginEnd="84dp" />
 
     <!-- The single floating glass highlight that springs between tiles. -->
     <com.gathin.tvhome.GlassView

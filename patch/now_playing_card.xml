@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Now playing card (NowPlayingCard): cover, title, artist, transport controls and a progress line.
+  The card is a single focus target; left/right on the remote change track, OK plays or pauses.
+  A <merge> root, so the custom view adds these children directly.
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
+
+        <ImageView
+            android:id="@+id/nowPlayingArt"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:scaleType="centerCrop"
+            android:importantForAccessibility="no" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/nowPlayingTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:includeFontPadding="false"
+                android:textColor="#FFFFFFFF"
+                android:textSize="17sp"
+                android:fontFamily="@string/font_medium" />
+
+            <TextView
+                android:id="@+id/nowPlayingArtist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:includeFontPadding="false"
+                android:textColor="#B3FFFFFF"
+                android:textSize="13sp"
+                android:fontFamily="@string/font_light" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:id="@+id/nowPlayingPrev"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_skip_previous"
+                    android:contentDescription="@string/now_playing_previous"
+                    android:importantForAccessibility="no" />
+
+                <ImageView
+                    android:id="@+id/nowPlayingPlay"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="2dp"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_play"
+                    android:contentDescription="@string/now_playing_play"
+                    android:importantForAccessibility="no" />
+
+                <ImageView
+                    android:id="@+id/nowPlayingNext"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="2dp"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_skip_next"
+                    android:contentDescription="@string/now_playing_next"
+                    android:importantForAccessibility="no" />
+
+                <ProgressBar
+                    android:id="@+id/nowPlayingProgress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="0dp"
+                    android:layout_height="3dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:minHeight="3dp"
+                    android:maxHeight="3dp"
+                    android:max="1000"
+                    android:progressTint="#FFFFFFFF"
+                    android:progressBackgroundTint="#33FFFFFF" />
+
+                <TextView
+                    android:id="@+id/nowPlayingTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:fontFamily="@string/font_light" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</merge>
