@@ -2,7 +2,13 @@
 
 A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv) launcher (v2.7, versionCode 8) with a Liquid Glass look, Jakarta weather, PS5-style navigation sounds, and a wallpaper-synced idle screensaver. Built and tested on a **TCL BeyondTV (Android TV 9, API 28)**.
 
-![Home](screenshots/papay-home-2026-11-06.png)
+| Before: stock TCL home | After: Papay launcher |
+|---|---|
+| ![Before](screenshots/before-stock-2026-10-24.png) | ![After](screenshots/papay-home-2026-11-06.png) |
+
+![Screensaver](screenshots/jakarta-screensaver-2026-10-27.png)
+
+*Idle screensaver: same wallpaper, clock, weather and greeting.*
 
 ## Features
 
