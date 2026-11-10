@@ -102,6 +102,7 @@ From the same hold-OK menu: **Ganti dengan aplikasi lain** swaps a dock tile, an
 - `wallpaper_choice` - default wallpaper when no saved choice exists.
 - `tile_menu` - hold OK on a tile opens the move/dock/app-info menu (on by default here).
 - `reorder_button` - shows the two-arrow reorder button in the top bar (off here; holding OK on a tile is enough).
+- `app_keys` / `stock_home_redirect` - Xiaomi Mi/PatchWall remote fix: key 192 (Mi button) goes Home, and PatchWall is sent back to this launcher. `setup.ps1 -List xiaomi-*` turns on the launcher's key helpers for it.
 
 ## Notes for your own TV
 

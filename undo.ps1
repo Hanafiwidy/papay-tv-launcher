@@ -48,6 +48,19 @@ if (Test-Path $pkgList) {
 & $Adb -s $dev shell "settings put secure screensaver_enabled 0" | Out-Null
 & $Adb -s $dev shell "settings put secure screensaver_components com.android.systemui.somnus/.SomnusDream" | Out-Null
 
+# Lepas helper tombol Xiaomi, kalau tidak Home bawaan akan dilempar balik ke Papay.
+$cur = ((& $Adb -s $dev shell "settings get secure enabled_accessibility_services" 2>&1) -join "").Trim()
+$keep = @()
+if ($cur -ne "" -and $cur -ne "null") {
+    $keep = $cur -split ":" | Where-Object { $_ -ne "" -and $_ -notlike "com.gathin.tvhome/*" }
+}
+if ($keep.Count -gt 0) {
+    & $Adb -s $dev shell ("settings put secure enabled_accessibility_services " + ($keep -join ":")) | Out-Null
+} else {
+    & $Adb -s $dev shell "settings delete secure enabled_accessibility_services" | Out-Null
+    & $Adb -s $dev shell "settings put secure accessibility_enabled 0" | Out-Null
+}
+
 Write-Host "Selesai. Semua paket sudah di-enable lagi."
 Write-Host "Set stock launcher sebagai Home: Buka TV > pilih Home bawaan, atau:"
 Write-Host "  adb shell cmd package set-home-activity com.google.android.tvlauncher/.MainActivity"

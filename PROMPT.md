@@ -54,8 +54,9 @@ cd papay-tv-launcher
    powershell -ExecutionPolicy Bypass -File setup.ps1 -TvHost <IP> -List <folder> -GreetingName "<nama>"
    ```
 6. Cek: `adb shell dumpsys window | findstr mCurrentFocus` harus berisi `com.gathin.tvhome`.
-   Buka Netflix/YouTube dari Home, tekan Home (harus balik ke launcher). Reboot TV sekali lalu ulangi
-   cek Home, Wi-Fi, dan jam.
+   Buka Netflix/YouTube dari Home, tekan Home (harus balik ke launcher). Di Xiaomi/PatchWall, tekan
+   tombol **Mi** di remote: harus balik ke launcher juga (setup mengaktifkan helper tombol Mi untuk
+   `-List xiaomi-*`). Reboot TV sekali lalu ulangi cek Home, Wi-Fi, dan jam.
 7. Kalau ada yang rusak: `powershell -ExecutionPolicy Bypass -File undo.ps1 -TvHost <IP> -List <folder>`.
 8. Lapor: model TV, list yang dipakai, jumlah paket yang dimatikan, dan hasil cek setelah reboot.
 

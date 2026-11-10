@@ -27,7 +27,9 @@
   "greeting_name": "NAMA KAMU",
   "home_idle_clock_minutes": 5,
   "clock_wallpaper": true,
-  "clock_wallpaper_dim": 40
+  "clock_wallpaper_dim": 40,
+  "app_keys": ["192:home"],
+  "stock_home_redirect": "com.mitv.tvhome.atv"
 }
 
 

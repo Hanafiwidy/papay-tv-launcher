@@ -118,6 +118,20 @@ if ($focus -notlike "*com.gathin.tvhome*") {
     exit 1
 }
 
+# Xiaomi/PatchWall: firmware mengirim tombol Mi (192) ke PatchWall sebelum filter Android.
+# Hidupkan helper bawaan launcher: 192 -> Home, dan PatchWall yang muncul tetap dilempar balik ke sini.
+if ($List -like "*xiaomi*") {
+    Write-Host "  Xiaomi: aktifkan helper tombol Mi/PatchWall"
+    $svc = @()
+    $cur = (((Sh "settings get secure enabled_accessibility_services") -join "")).Trim()
+    if ($cur -ne "" -and $cur -ne "null") { $svc = $cur -split ":" }
+    foreach ($s in @("com.gathin.tvhome/.HomeKeyService", "com.gathin.tvhome/.InputKeyService")) {
+        if ($svc -notcontains $s) { $svc += $s }
+    }
+    Sh ("settings put secure enabled_accessibility_services " + ($svc -join ":")) | Out-Null
+    Sh "settings put secure accessibility_enabled 1" | Out-Null
+}
+
 if (-not $SkipDebloat) {
     Write-Host "== 6/6 debloat dari $pkgList (disable saja, bisa di-undo) =="
     $disabled = 0; $failed = @()
