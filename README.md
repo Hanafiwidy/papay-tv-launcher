@@ -4,9 +4,9 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 
 | Before: stock TCL home | After: Papay launcher |
 |---|---|
-| ![Before](screenshots/before-stock-2026-10-24.png) | ![After](screenshots/papay-home-2026-11-06.png) |
+| ![Before](screenshots/before-stock-2026-10-24.png) | ![After](screenshots/papay-home-2026-11-12.png) |
 
-![Screensaver](screenshots/jakarta-screensaver-2026-10-27.png)
+![Screensaver](screenshots/papay-screensaver-2026-11-12.png)
 
 *Idle screensaver: same wallpaper, clock, weather and greeting.*
 
