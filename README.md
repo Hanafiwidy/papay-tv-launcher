@@ -41,6 +41,7 @@ the TV and accepting the RSA prompt still has to be done with the remote. Withou
 | Path | What it is |
 |---|---|
 | `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (635 KB) |
+| `BitChordTV-v1.9.1_armeabi-v7a.apk` | BitChord TV 1.9.1, the player the now-playing card reads (GPL-3.0, source: [kushagrasinghx/BitChord](https://github.com/kushagrasinghx/BitChord)) |
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
 | `PROMPT.md` | Agent instructions: read the TV model, pick a list, install, verify, undo |
 | `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |
@@ -65,7 +66,8 @@ Enable Network ADB debugging on the TV first, and make sure the PC and TV share 
 What it does, in order:
 
 1. `adb connect` to the TV.
-2. Installs `mikhayla-glass-home-2.7.apk` (PS5 sounds are already inside it).
+2. Installs `mikhayla-glass-home-2.7.apk` (PS5 sounds are already inside it) and the bundled
+   `BitChordTV-v1.9.1_armeabi-v7a.apk` if that file is present (skipped when you delete it).
 3. Builds a `config.json` from `config.example.json` and pushes it (with your greeting name).
 4. Pushes the 25 wallpapers into the app's `files/wallpapers/` dir.
 5. Sets the launcher as Home (`cmd package set-home-activity`) and wires the screensaver (`ClockDream`), **only then** - never before the new Home is confirmed:
@@ -80,6 +82,7 @@ Not included: iDLIX (a third-party store APK - install it yourself if you want i
 ```powershell
 adb connect <TV-IP>:5555
 adb install -r mikhayla-glass-home-2.7.apk
+adb install -r BitChordTV-v1.9.1_armeabi-v7a.apk
 adb push config.example.json /sdcard/Android/data/com.gathin.tvhome/files/config.json
 adb push wallpapers/tv-4k /sdcard/Android/data/com.gathin.tvhome/files/wallpapers/
 adb shell am force-stop com.gathin.tvhome
@@ -116,9 +119,9 @@ BitChord is force-closed, and OK there opens BitChord. It slips away while the a
 down, so it never covers a tile, and says *BitChord not installed* when the player is missing. The card
 only binds while Home is visible, so it doesn't keep the player's process alive in the background. It
 needs BitChord TV installed - the phone build is a different package and has no session for the TV
-remote to reach. Get it from
-[kushagrasinghx/BitChord releases](https://github.com/kushagrasinghx/BitChord/releases)
-(`BitChordTV-<version>_armeabi-v7a.apk` on a 32-bit TV such as this one, `_arm64-v8a` otherwise).
+remote to reach. The repo ships `BitChordTV-v1.9.1_armeabi-v7a.apk` (32-bit, also runs on 64-bit TVs)
+and `setup.ps1` installs it; it is GPL-3.0 software from
+[kushagrasinghx/BitChord](https://github.com/kushagrasinghx/BitChord), so the source is there.
 
 ## Key config options
 

@@ -1,8 +1,9 @@
 # =====================================================================
 # Papay TV Launcher - setup lengkap satu perintah untuk TV baru
 # =====================================================================
-# Launcher glass + suara PS5 + 25 wallpaper 4K + screensaver, plus debloat
-# per model TV (disable saja, semua bisa dibalik).
+# Launcher glass + suara PS5 + 25 wallpaper 4K + screensaver, plus BitChord TV
+# (pemutar untuk kartu now-playing) dan debloat per model TV (disable saja,
+# semua bisa dibalik).
 #
 # Pakai:
 #   powershell -ExecutionPolicy Bypass -File setup.ps1 -TvHost 192.168.1.XXX -List tcl-65c735
@@ -32,6 +33,8 @@ param(
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
 $apk    = Join-Path $repo "mikhayla-glass-home-2.7.apk"
+# BitChord TV (GPL-3.0, github.com/kushagrasinghx/BitChord): the player the now-playing card reads.
+$bitchord = Join-Path $repo "BitChordTV-v1.9.1_armeabi-v7a.apk"
 $cfgEx  = Join-Path $repo "config.example.json"
 # Daftar debloat: -List bisa nama folder examples\ (mis. tcl-65c735) atau path file.
 $pkgList = Join-Path $repo "debloat\packages-disabled.txt"
@@ -63,6 +66,8 @@ if ("$st" -ne "device") { Write-Host "TV tidak tersambung ($st). Cek jaringan/AK
 
 Write-Host "== 2/6 pasang APK =="
 & $Adb -s $dev install -r $apk
+# Player for the now-playing card. Skipped if the file is gone; the card then says "BitChord not installed".
+if (Test-Path $bitchord) { & $Adb -s $dev install -r $bitchord }
 
 Write-Host "== 3/6 push config =="
 $cfgLocal = Join-Path $env:TEMP "mikhayla-config.json"
