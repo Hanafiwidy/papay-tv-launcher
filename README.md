@@ -116,7 +116,9 @@ BitChord is force-closed, and OK there opens BitChord. It slips away while the a
 down, so it never covers a tile, and says *BitChord not installed* when the player is missing. The card
 only binds while Home is visible, so it doesn't keep the player's process alive in the background. It
 needs BitChord TV installed - the phone build is a different package and has no session for the TV
-remote to reach.
+remote to reach. Get it from
+[kushagrasinghx/BitChord releases](https://github.com/kushagrasinghx/BitChord/releases)
+(`BitChordTV-<version>_armeabi-v7a.apk` on a 32-bit TV such as this one, `_arm64-v8a` otherwise).
 
 ## Key config options
 
