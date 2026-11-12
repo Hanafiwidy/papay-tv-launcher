@@ -40,7 +40,7 @@ the TV and accepting the RSA prompt still has to be done with the remote. Withou
 
 | Path | What it is |
 |---|---|
-| `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (506 KB) |
+| `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (635 KB) |
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
 | `PROMPT.md` | Agent instructions: read the TV model, pick a list, install, verify, undo |
 | `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |

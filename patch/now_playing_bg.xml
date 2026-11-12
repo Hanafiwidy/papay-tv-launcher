@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Glass card behind the now-playing panel: the pills' frosted look, larger corners, brighter rim on focus. -->
+<!-- Glass card behind the now-playing panel: a dark frosted slab like the weather card, so white text stays
+     readable over a bright wallpaper. Focus brightens the rim. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#5CFFFFFF" android:endColor="#29FFFFFF" />
+            <gradient android:angle="270" android:startColor="#EF2E2E33" android:endColor="#E6141417" />
             <stroke android:width="1.5dp" android:color="#B3FFFFFF" />
             <corners android:radius="22dp" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#2EFFFFFF" android:endColor="#14FFFFFF" />
+            <gradient android:angle="270" android:startColor="#D92A2A2E" android:endColor="#CC131316" />
             <stroke android:width="1dp" android:color="#38FFFFFF" />
             <corners android:radius="22dp" />
         </shape>

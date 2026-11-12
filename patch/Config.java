@@ -88,7 +88,7 @@ final class Config {
     /** Lunisolar date under the date (config.json lunar_date), computed for lunarUtcOffset hours east of UTC (-1: by locale). */
     final boolean lunarDate;
     final int lunarUtcOffset;
-    /** Name after the greeting ("Good morning, Mr. Trá»‹nh"); empty for the greeting alone. */
+    /** Name after the greeting ("Good morning, Mr. Trịnh"); empty for the greeting alone. */
     final String greetingName;
     final boolean moduleCards;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): stiff spring, short fades, no replay. */
@@ -589,7 +589,12 @@ final class Config {
         if (wallpapers.isEmpty() && wallpaper != null) wallpapers.add(wallpaper);
         // An on-TV wallpaper pick overrides the theme: a filename from the wallpapers/
         // collection, or "none". Unset means the theme decides (off by default).
+        // A theme can also name its own default picture ("wallpaper_choice"), which survives the
+        // preferences the launcher clears when the theme changes.
         String wallpaperChoice = choices.getString(WALLPAPER_CHOICE_KEY, null);
+        if (wallpaperChoice == null && json != null) {
+            wallpaperChoice = string(json, "wallpaper_choice", null);
+        }
         List<File> chosen = WallpaperRotation.chosen(dir == null ? Collections.emptyList()
                 : WallpaperRotation.images(new File(dir, "wallpapers")), wallpaper, wallpaperChoice);
         if (chosen != null) {

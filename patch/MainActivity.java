@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -39,6 +40,8 @@ import android.net.NetworkRequest;
 import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.ScanResult;
+import android.net.wifi.WifiConfiguration;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -48,9 +51,11 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
+import android.text.InputType;
 import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -60,9 +65,13 @@ import android.view.SoundEffectConstants;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.widget.FrameLayout;
+import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -86,6 +95,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -187,6 +197,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean lunar;
     private int lunarOffset;
     private TextView stats;
+    /** Cuaca/AQI (kota bisa diganti lewat panel detail) dan lalu lintas data Wi-Fi di bawah header. */
+    private TextView weatherHome;
+    private TextView weatherTomorrow;
+    private LinearLayout weatherCard;
+    private TextView trafficHome;
+    /** Wi-Fi in/out, sampled once a second while Home is in front. */
+    private final NetTraffic traffic = new NetTraffic();
     private List<RaceWeekend.Race> raceCalendar;
     private View racePanel;
     private TextView raceKicker, raceHeadline, raceSessions;
@@ -195,6 +212,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean shamsi;
     /** greeting_name: said after the greeting, which is shown in capitals. */
     private String greetingName = "";
+    /** The theme's picture (config.json wallpaper_choice / wallpaper) before the picker saves a choice. */
+    private String wallpaperDefaultName;
     /** Optional time-of-day backdrop (config.xml, sky_intensity); 0 keeps it hidden. */
     private SkyView sky;
     private String vpnApp;
@@ -363,6 +382,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         public void run() {
             updateGreeting();
             updateRace();
+            updateStatusRow();
             // The pill follows the network callbacks and each return to Home; only the diya's flame follows the
             // signal level, so only it needs this minute's binder calls (about 7 ms on the UI thread).
             if (festive) updateWifiLabel();
@@ -372,9 +392,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     };
 
+    /** Wi-Fi traffic changes every second, so this line refreshes faster than the minute tick. */
+    private final Runnable trafficTick = new Runnable() {
+        @Override
+        public void run() {
+            updateTrafficLabel();
+            handler.postDelayed(this, 1000);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // PS5-style navigation sounds, loaded once per Home process (SoundEffects).
+        SoundEffects.init(this);
         setContentView(R.layout.activity_main);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
@@ -422,10 +453,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky.setIntensity(cfg.skyIntensity);
         glass = findViewById(R.id.glass);
         glass.setStyle(cfg.glassStyle);
+        if (festive) glass.setAccent(festival.accentColor());
         nowPlaying = findViewById(R.id.nowPlaying);
         nowPlayingEnabled = cfg.nowPlaying;
         if (!nowPlayingEnabled) nowPlaying.setVisibility(View.GONE);
-        if (festive) glass.setAccent(festival.accentColor());
         ambient = findViewById(R.id.ambient);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
         // a fade renders it into a full-screen offscreen buffer first.
@@ -481,10 +512,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showStats = cfg.showStats;
         shamsi = cfg.shamsiDate;
         lunarDate = findViewById(R.id.lunarDate);
+        weatherHome = findViewById(R.id.weatherHome);
+        weatherTomorrow = findViewById(R.id.weatherTomorrow);
+        // Clicking the card opens the weather detail panel (24 hours, 7 days, city switcher).
+        weatherCard = findViewById(R.id.weatherCard);
+        weatherCard.setOnClickListener(v -> showWeatherPanel());
+        weatherCard.setOnFocusChangeListener((v, focused) -> v.animate()
+                .scaleX(focused ? 1.05f : 1f).scaleY(focused ? 1.05f : 1f)
+                .setDuration(reducedMotion ? Motion.REDUCED_MS : 120)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start());
+        trafficHome = findViewById(R.id.trafficHome);
+        updateStatusRow();
+        // The weather cache is cheap: it only hits the network when due.
+        WeatherAirQuality.syncIfDue(this, this::updateStatusRow);
+        // Liquid glass on the three top pills: Inputs, Wi-Fi and Settings.
+        for (int id : new int[]{R.id.btnInputs, R.id.btnWifi, R.id.btnSettings}) {
+            View pill = findViewById(id);
+            if (pill != null) pill.setBackground(new PillGlassDrawable(pill));
+        }
         lunar = cfg.lunarDate;
         lunarOffset = Lunar.offsetFor(cfg.lunarUtcOffset, Locale.getDefault());
         if (lunar) lunarDate.setVisibility(View.VISIBLE);
         greetingName = cfg.greetingName;
+        wallpaperDefaultName = cfg.wallpaper == null ? null : cfg.wallpaper.getName();
         if (shamsi) {
             shamsiDate.setVisibility(View.VISIBLE);
             TextView date = findViewById(R.id.date);
@@ -687,8 +737,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         btnInputs = findViewById(R.id.btnInputs);
         View btnSettings = findViewById(R.id.btnSettings);
-        btnInputs.setOnClickListener(v -> showInputs());
-        btnWifi.setOnClickListener(v -> openNetworkPill());
+        btnInputs.setOnClickListener(v -> {
+            SoundEffects.playSelect();
+            showInputs();
+        });
+        btnWifi.setOnClickListener(v -> {
+            SoundEffects.playSelect();
+            showWifiMenu();
+        });
         btnWifi.setOnLongClickListener(v -> {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
             return true;
@@ -699,9 +755,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             ((TextView) btnSettings).setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_home_settings_pill, 0, 0, 0);
         }
         btnSettings.setOnClickListener(v -> {
-            if (launcherSettingsButton) startActivityForResult(
-                    new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
-            else open(systemIntent(Settings.ACTION_SETTINGS));
+            SoundEffects.playSelect();
+            showGearMenu();
         });
         btnReorder = findViewById(R.id.btnReorder);
         btnReorder.setOnClickListener(v -> toggleReorder());
@@ -736,7 +791,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             ((TextView) btnSettings).setText(R.string.settings);
             ((TextView) btnSettings).setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_settings, 0, 0, 0);
             if (!iconOnlyButtons) makeIconOnly((TextView) btnSettings);
-            btnSettings.setOnClickListener(v -> showTopMenu());
+            btnSettings.setOnClickListener(v -> {
+                SoundEffects.playSelect();
+                showTopMenu();
+            });
             // The lone gear sits at the header's middle, not on its bottom line like the row of pills.
             LinearLayout topButtons = findViewById(R.id.topButtons);
             RelativeLayout.LayoutParams tlp = (RelativeLayout.LayoutParams) topButtons.getLayoutParams();
@@ -947,6 +1005,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openLiveTvAfterBoot()) return;
         updateGreeting();
         updateRace();
+        updateStatusRow();
+        WeatherAirQuality.syncIfDue(this, this::updateStatusRow);
+        handler.removeCallbacks(trafficTick);
+        handler.post(trafficTick);
         // The network and Inputs pills keep their state while Home is in the background, and callbacks update them
         // when the network or the inputs change, so this refresh only catches anything missed. Its binder calls
         // (about 7 ms on a TCL C755, most of it WifiManager.getConnectionInfo) would hold up the first frame back
@@ -1135,6 +1197,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambient.animate().cancel();
         heroArt.animate().cancel();
         handler.removeCallbacks(minuteTick);
+        handler.removeCallbacks(trafficTick);
         stopStats();
         if (diya != null) diya.stop();
         cancelPendingFocusScroll();
@@ -1190,6 +1253,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        SoundEffects.release();
         unregisterReceiver(packageReceiver);
         wallpaperPlayer.close();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
@@ -1590,6 +1654,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     public void onTileFocused(int position, View card) {
+        if (hasWindowFocus()) SoundEffects.playNav();
         lastFocused = position;
         lastFocusedKey = adapter.keyAt(position);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
@@ -2426,34 +2491,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
-    private void updateGreeting() {
-        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        int res;
-        // Locale-specific day parts (app language on Android 13+).
-        // Indonesian: Pagi 00-10, Siang 10-15, Sore 15-18, Malam 18-24.
-        // Spain (es-ES) and Catalan: "Buenas tardes" into the evening; "Buenas noches" from 21.
-        // Latin American Spanish (es-MX, es-AR, …) keeps the default hours: evening strings are also
-        // «Buenas noches», and there «Buenas noches» from ~17 matches local use better than Spain's 21.
-        Locale locale = getResources().getConfiguration().getLocales().get(0);
-        String lang = locale.getLanguage();
-        String country = locale.getCountry();
-        if ("in".equals(lang) || "id".equals(lang)) {
-            if (hour < 10) res = R.string.good_morning;
-            else if (hour < 15) res = R.string.good_afternoon;
-            else if (hour < 18) res = R.string.good_evening;
-            else res = R.string.good_night;
-        } else if (("es".equals(lang) && "ES".equals(country)) || "ca".equals(lang)) {
-            if (hour < 6) res = R.string.good_night;
-            else if (hour < 12) res = R.string.good_morning;
-            else if (hour < 21) res = R.string.good_afternoon;
-            else res = R.string.good_night;
-        } else {
-            if (hour < 5) res = R.string.good_night;
-            else if (hour < 12) res = R.string.good_morning;
-            else if (hour < 17) res = R.string.good_afternoon;
-            else if (hour < 22) res = R.string.good_evening;
-            else res = R.string.good_night;
+    /** Cuaca/AQI Jakarta dan lalu lintas Wi-Fi; dipanggil saat Home dibuat, saat kembali, dan berkala. */
+    private void updateStatusRow() {
+        if (weatherHome != null) {
+            SpannableStringBuilder line = new SpannableStringBuilder(
+                    WeatherAirQuality.getCityName(this).toUpperCase(Locale.ROOT) + " \u00B7 ");
+            line.append(WeatherAirQuality.getFormatted(this));
+            weatherHome.setText(line);
         }
+        if (weatherTomorrow != null) {
+            weatherTomorrow.setText(WeatherAirQuality.getTomorrowFormatted(this));
+        }
+        updateTrafficLabel();
+    }
+
+    /** Refreshes the download/upload rates; the counters are cheap to read once a second. */
+    private void updateTrafficLabel() {
+        if (trafficHome == null) return;
+        traffic.sample();
+        trafficHome.setText(traffic.formatted());
+    }
+
+    private void updateGreeting() {
+        int res = Greeting.res(this);
         String festiveGreeting = festive ? festival.greetingText(getResources()) : "";
         if (!festiveGreeting.isEmpty()) {
             greeting.setText(festiveGreeting);
@@ -2719,6 +2779,677 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /** The network pill opens the VPN app when one is configured and installed, otherwise Wi-Fi settings. */
+    /** Android TV's own Wi-Fi picker: straight to the network list, with no Settings menu first. */
+    private void openWifiList() {
+        Intent i = new Intent().setClassName("com.android.tv.settings",
+                "com.android.tv.settings.connectivity.setup.WifiSetupActivity");
+        if (i.resolveActivity(getPackageManager()) == null) i = systemIntent(Settings.ACTION_WIFI_SETTINGS);
+        open(i);
+    }
+
+    // ---- Wi-Fi and settings dropdowns -------------------------------------------------------------
+
+    /**
+     * The Wi-Fi pill's dropdown, in the same glass panel as the Inputs list: the network in use, the
+     * live Wi-Fi traffic, and the networks in range. Picking one connects to it when the TV already
+     * knows it or it is open; a locked network the TV has never seen opens the system password screen.
+     */
+    private void showWifiMenu() {
+        if (openPopup != null) return;
+        View panel = getLayoutInflater().inflate(R.layout.popup_menu, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        // Wider than the Inputs list: SSIDs are longer than "HDMI 1" and the rates need room.
+        final PopupWindow popup = glassPopup(panel, (int) (300 * density));
+        final WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        WifiInfo info = null;
+        try {
+            if (wm != null) info = wm.getConnectionInfo();
+        } catch (Exception ignored) {
+        }
+        String ssid = info != null ? cleanSsid(info.getSSID()) : "";
+        boolean connected = info != null && info.getNetworkId() != -1 && !ssid.isEmpty();
+        if (!connected) ssid = getString(R.string.wifi);
+
+        addInputRow(rows, popup, R.drawable.ic_wifi, ssid, -1, this::openWifiList);
+        String ip = info != null ? ipv4(info.getIpAddress()) : "";
+        setLastRowStatus(rows, connected && !ip.isEmpty() ? ip : "Tidak terhubung");
+
+        // Live download/upload under the network name, refreshed while the list is open.
+        addInputRow(rows, popup, R.drawable.ic_swap_vert, "Lalu lintas data", -1, this::openWifiList);
+        final TextView trafficStatus = setLastRowStatus(rows, traffic.formatted());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (!popup.isShowing()) return;
+                traffic.sample();
+                if (trafficStatus != null) trafficStatus.setText(traffic.formatted());
+                handler.postDelayed(this, 1000);
+            }
+        });
+
+        List<ScanResult> networks = scanNetworks(wm);
+        // The network in use is already the first row, so it need not appear again in the scan list.
+        final String currentSsid = ssid;
+        networks.removeIf(network -> network.SSID.equals(currentSsid));
+        if (!networks.isEmpty()) {
+            addSeparator(rows);
+            for (ScanResult network : networks) {
+                boolean locked = needsPassword(network);
+                addInputRow(rows, popup, locked ? R.drawable.ic_lock : R.drawable.ic_wifi, network.SSID, -1,
+                        () -> chooseWifi(network, wm));
+                setLastRowStatus(rows, locked ? "Terkunci" : "Terbuka");
+            }
+        }
+        addSeparator(rows);
+        addInputRow(rows, popup, R.drawable.ic_swap_vert, "Pindai ulang", -1, this::rescanWifi);
+
+        capMenuHeight(panel, btnWifi);
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        popup.setWidth(Math.max((int) (300 * density),
+                Math.min(panel.getMeasuredWidth(), (int) (420 * density))));
+        dropIn(popup, panel, btnWifi,
+                getResources().getBoolean(R.bool.rtl_menu_bar) ? Gravity.START : Gravity.END);
+        rows.getChildAt(0).requestFocus();
+    }
+
+    /**
+     * The room under an anchor pill. Menus are measured against it so a long Wi-Fi scan or the whole
+     * wallpaper list scrolls inside the panel instead of running off the bottom of the screen.
+     */
+    private int menuMaxHeight(View anchor) {
+        int[] anchorAt = new int[2];
+        int[] rootAt = new int[2];
+        anchor.getLocationOnScreen(anchorAt);
+        root.getLocationOnScreen(rootAt);
+        int below = anchorAt[1] - rootAt[1] + anchor.getHeight() + (int) (10 * density);
+        return Math.max((int) (150 * density), root.getHeight() - below - (int) (20 * density));
+    }
+
+    /** Shortens the scroll view of a tall menu to the room under its anchor, leaving the panel layout. */
+    private void capMenuHeight(View panel, View anchor) {
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int max = menuMaxHeight(anchor);
+        View scroll = panel.findViewById(R.id.scroll);
+        if (scroll == null || panel.getMeasuredHeight() <= max) return;
+        scroll.getLayoutParams().height = max - panel.getPaddingTop() - panel.getPaddingBottom();
+        scroll.requestLayout();
+    }
+
+    /** Writes the status line of the row just added (addInputRow hides it unless the input state is known). */
+    private TextView setLastRowStatus(LinearLayout rows, CharSequence text) {
+        if (rows.getChildCount() == 0) return null;
+        TextView status = rows.getChildAt(rows.getChildCount() - 1).findViewById(R.id.status);
+        if (status == null) return null;
+        status.setText(text);
+        status.setVisibility(View.VISIBLE);
+        return status;
+    }
+
+    /** The strongest scan result per SSID, no empty names, at most twelve rows. */
+    private List<ScanResult> scanNetworks(WifiManager wm) {
+        Map<String, ScanResult> strongest = new LinkedHashMap<>();
+        if (wm != null) {
+            try {
+                for (ScanResult result : wm.getScanResults()) {
+                    if (result == null || TextUtils.isEmpty(result.SSID)) continue;
+                    ScanResult seen = strongest.get(result.SSID);
+                    if (seen == null || result.level > seen.level) strongest.put(result.SSID, result);
+                }
+            } catch (Exception ignored) {
+                // No location permission or location off: the system picker below still lists them.
+            }
+        }
+        List<ScanResult> networks = new ArrayList<>(strongest.values());
+        Collections.sort(networks, (a, b) -> Integer.compare(b.level, a.level));
+        return networks.size() > 12 ? new ArrayList<>(networks.subList(0, 12)) : networks;
+    }
+
+    private void rescanWifi() {
+        WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        try {
+            if (wm != null) wm.startScan();
+        } catch (Exception ignored) {
+        }
+        Toast.makeText(this, "Memindai jaringan Wi-Fi...", Toast.LENGTH_SHORT).show();
+        root.postDelayed(this::showWifiMenu, 2500);
+    }
+
+    private void chooseWifi(ScanResult network, WifiManager wm) {
+        if (wm == null) {
+            openWifiList();
+            return;
+        }
+        try {
+            WifiInfo info = wm.getConnectionInfo();
+            if (info != null && network.SSID.equals(cleanSsid(info.getSSID()))) return;   // already on it
+            int saved = savedNetworkId(wm, network.SSID);
+            if (saved >= 0 && wm.enableNetwork(saved, true)) {
+                wm.reconnect();
+                Toast.makeText(this, "Menyambung ke " + network.SSID, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!needsPassword(network)) {
+                WifiConfiguration config = new WifiConfiguration();
+                config.SSID = "\"" + network.SSID + "\"";
+                config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+                int added = wm.addNetwork(config);
+                if (added >= 0 && wm.enableNetwork(added, true)) {
+                    wm.reconnect();
+                    Toast.makeText(this, "Menyambung ke " + network.SSID, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        } catch (Exception ignored) {
+            // Newer Android hides other apps' Wi-Fi configs; fall through to the system screen.
+        }
+        Toast.makeText(this, "Masukkan sandi Wi-Fi di daftar berikut", Toast.LENGTH_SHORT).show();
+        root.postDelayed(this::openWifiList, 500);
+    }
+
+    private int savedNetworkId(WifiManager wm, String ssid) {
+        try {
+            List<WifiConfiguration> configs = wm.getConfiguredNetworks();
+            if (configs == null) return -1;
+            for (WifiConfiguration config : configs) {
+                if (config.SSID != null && ssid.equals(cleanSsid(config.SSID))) return config.networkId;
+            }
+        } catch (Exception ignored) {
+        }
+        return -1;
+    }
+
+    private static boolean needsPassword(ScanResult network) {
+        String capabilities = network.capabilities == null ? "" : network.capabilities.toUpperCase(Locale.ROOT);
+        return capabilities.contains("WPA") || capabilities.contains("WEP")
+                || capabilities.contains("EAP") || capabilities.contains("SAE");
+    }
+
+    private static String cleanSsid(String ssid) {
+        if (ssid == null || ssid.equals("<unknown ssid>")) return "";
+        return ssid.replaceAll("^\"|\"$", "");
+    }
+
+    private static String ipv4(int address) {
+        if (address == 0) return "";
+        return String.format(Locale.getDefault(), "%d.%d.%d.%d",
+                address & 0xff, address >> 8 & 0xff, address >> 16 & 0xff, address >> 24 & 0xff);
+    }
+
+    /** The gear's dropdown: change the wallpaper, or leave for the TV's own settings. */
+    private void showGearMenu() {
+        if (openPopup != null) return;
+        View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        final PopupWindow popup = glassPopup(panel, (int) (250 * density));
+        addInputRow(rows, popup, R.drawable.ic_picture,
+                getString(R.string.wallpaper_label), -1, this::showWallpaperPicker);
+        if (launcherSettingsButton) {
+            addInputRow(rows, popup, R.drawable.ic_home_settings,
+                    getString(R.string.launcher_settings), -1, () -> startActivityForResult(
+                            new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
+        }
+        addInputRow(rows, popup, R.drawable.ic_settings, "Pengaturan TV", -1,
+                () -> open(systemIntent(Settings.ACTION_SETTINGS)));
+        dropIn(popup, panel, findViewById(R.id.btnSettings),
+                getResources().getBoolean(R.bool.rtl_menu_bar) ? Gravity.START : Gravity.END);
+        rows.getChildAt(0).requestFocus();
+    }
+
+    /**
+     * Wallpapers pushed into this app's folder on the TV (themes/&#42;/wallpapers in the launcher repo),
+     * in the same glass panel as the other dropdowns. The choice is saved like the one in Launcher
+     * settings, so a theme push still clears it.
+     */
+    private void showWallpaperPicker() {
+        if (openPopup != null) return;
+        File dir = Config.dir(this);
+        List<File> images = new ArrayList<>(WallpaperRotation.images(
+                dir == null ? null : new File(dir, "wallpapers")));
+        File single = dir == null ? null : new File(dir, Config.WALLPAPER_NAME);
+        if (single != null && single.isFile()) images.add(0, single);
+        if (images.isEmpty()) {
+            Toast.makeText(this, "Belum ada wallpaper: salin gambar ke " + (dir == null ? "folder launcher" : "wallpapers/"),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<String> labels = wallpaperLabels(images);
+
+        View panel = getLayoutInflater().inflate(R.layout.popup_menu, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        final PopupWindow popup = glassPopup(panel, (int) (320 * density));
+        SharedPreferences choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
+        String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
+        // Before a pick is saved, a theme's own default picture (config.json wallpaper_choice) is
+        // what Home shows, so mark that one as current.
+        if (current == null && wallpaperDefaultName != null) current = wallpaperDefaultName;
+
+        for (int i = 0; i < images.size(); i++) {
+            String name = images.get(i).getName();
+            addInputRow(rows, popup, R.drawable.ic_picture, labels.get(i), -1, () -> applyWallpaper(name));
+            if (name.equals(current)) setLastRowStatus(rows, getString(R.string.wallpaper_current));
+        }
+        addSeparator(rows);
+        addInputRow(rows, popup, R.drawable.ic_picture, getString(R.string.wallpaper_none), -1,
+                () -> applyWallpaper(WallpaperRotation.CHOICE_NONE));
+        if (WallpaperRotation.CHOICE_NONE.equals(current)) setLastRowStatus(rows, getString(R.string.wallpaper_current));
+        addInputRow(rows, popup, R.drawable.ic_home_settings, getString(R.string.wallpaper_theme_default), -1,
+                () -> applyWallpaper(null));
+        if (current == null) setLastRowStatus(rows, getString(R.string.wallpaper_current));
+
+        capMenuHeight(panel, findViewById(R.id.btnSettings));
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        popup.setWidth(Math.max((int) (320 * density),
+                Math.min(panel.getMeasuredWidth(), (int) (460 * density))));
+        dropIn(popup, panel, findViewById(R.id.btnSettings),
+                getResources().getBoolean(R.bool.rtl_menu_bar) ? Gravity.START : Gravity.END);
+        // Start at the wallpaper in use rather than at the top of a list that can be 30 rows long.
+        View focus = rows.getChildAt(focusIndexFor(images, current));
+        if (focus != null) focus.requestFocus();
+    }
+
+    /** Remembers a wallpaper choice and rebuilds Home so the wallpaper player picks it up. */
+    private void applyWallpaper(String choice) {
+        SharedPreferences choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
+        if (choice == null) choices.edit().remove(Config.WALLPAPER_CHOICE_KEY).apply();
+        else choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, choice).apply();
+        Toast.makeText(this, R.string.wallpaper_applied, Toast.LENGTH_SHORT).show();
+        recreate();
+    }
+
+    /** The row of the wallpaper in use: its picture, then "none", then "theme default". */
+    private static int focusIndexFor(List<File> images, String current) {
+        if (current == null) return images.size() + 2;
+        if (WallpaperRotation.CHOICE_NONE.equals(current)) return images.size() + 1;
+        return Math.max(0, indexOfFile(images, current));
+    }
+
+    private static int indexOfFile(List<File> images, String name) {
+        if (name == null) return -1;
+        for (int i = 0; i < images.size(); i++) if (images.get(i).getName().equals(name)) return i;
+        return -1;
+    }
+
+    // ---- weather detail panel -----------------------------------------------------------------------
+
+    /**
+     * The weather card is a widget, not a button: pressing it opens this glass panel with the current
+     * condition, a 24-hour strip, the 7-day list and the city switcher, like a phone weather app.
+     */
+    private void showWeatherPanel() {
+        if (openPopup != null) return;
+        View panelView = getLayoutInflater().inflate(R.layout.popup_menu, root, false);
+        LinearLayout rows = panelView.findViewById(R.id.rows);
+        final PopupWindow popup = glassPopup(panelView, (int) (440 * density));
+        popup.setInputMethodMode(PopupWindow.INPUT_METHOD_NEEDED); // city search needs the IME
+        fillWeatherMain(rows, popup);
+        capMenuHeight(panelView, weatherCard);
+        panelView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        popup.setWidth((int) (440 * density));
+        dropIn(popup, panelView, weatherCard, Gravity.END);
+        View first = rows.getChildAt(0);
+        if (first != null) first.requestFocus();
+        // The cache refetches every 30 minutes; if it lands while the panel is open (and no city is
+        // being typed), rebuild the rows so the panel shows the fresh numbers.
+        WeatherAirQuality.syncIfDue(this, () -> {
+            if (popup.isShowing() && "main".equals(rows.getTag())) fillWeatherMain(rows, popup);
+        });
+    }
+
+    /** Current conditions header, hourly strip and the 7-day list of the panel. */
+    private void fillWeatherMain(LinearLayout rows, PopupWindow popup) {
+        rows.setTag("main");
+        WeatherAirQuality.FullWeather w = WeatherAirQuality.getFullWeather(this);
+        rows.removeAllViews();
+
+        addPanelRow(rows, R.drawable.ic_home_settings, "Lokasi: " + w.location,
+                () -> fillWeatherSearch(rows, popup));
+
+        TextView now = new TextView(this);
+        now.setText(w.icon + "  " + w.temp + "°  " + w.condition);
+        now.setTextColor(0xFFFFFFFF);
+        now.setTextSize(26);
+        now.setTypeface(UiFont.get(this, R.string.font_medium));
+        now.setPadding((int) (12 * density), (int) (10 * density), (int) (12 * density), (int) (4 * density));
+        now.setFocusable(false);
+        rows.addView(now);
+
+        TextView facts = new TextView(this);
+        facts.setText("Terasa " + w.apparentTemp + "°  ·  Lembap " + w.humidity + "%  ·  Angin "
+                + w.windSpeed + " km/h  ·  Hujan hari ini " + w.rainChanceToday + "%\n"
+                + "Terbit " + w.sunrise + "  ·  Terbenam " + w.sunset + "  ·  UV " + w.uvIndex
+                + "  ·  AQI " + w.aqi + " " + w.aqiStatus);
+        facts.setTextColor(0xA6FFFFFF);
+        facts.setTextSize(12);
+        facts.setLineSpacing(0f, 1.25f);
+        facts.setPadding((int) (12 * density), 0, (int) (12 * density), (int) (8 * density));
+        facts.setFocusable(false);
+        rows.addView(facts);
+
+        addSeparator(rows);
+        rows.addView(sectionLabel("24 JAM KE DEPAN"));
+        rows.addView(hourlyStrip(w.hourly));
+
+        addSeparator(rows);
+        rows.addView(sectionLabel("7 HARI KE DEPAN"));
+        for (WeatherAirQuality.DailyItem d : w.daily) rows.addView(dailyRow(d));
+    }
+
+    /** Labels between sections of the panel. */
+    private TextView sectionLabel(String text) {
+        TextView label = new TextView(this);
+        label.setText(text);
+        label.setTextColor(0x80FFFFFF);
+        label.setTextSize(10);
+        label.setLetterSpacing(0.08f);
+        label.setTypeface(UiFont.get(this, R.string.font_medium));
+        label.setPadding((int) (12 * density), (int) (10 * density), (int) (12 * density), (int) (2 * density));
+        label.setFocusable(false);
+        return label;
+    }
+
+    /** One glass cell per hour, laid out in a strip that the D-pad scrolls sideways through. */
+    private View hourlyStrip(List<WeatherAirQuality.HourlyItem> items) {
+        HorizontalScrollView scroller = new HorizontalScrollView(this);
+        scroller.setHorizontalScrollBarEnabled(false);
+        LinearLayout strip = new LinearLayout(this);
+        strip.setOrientation(LinearLayout.HORIZONTAL);
+        strip.setPadding((int) (6 * density), 0, (int) (6 * density), (int) (2 * density));
+        for (WeatherAirQuality.HourlyItem item : items) {
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            cell.setBackgroundResource(R.drawable.input_row_bg);
+            cell.setPadding((int) (11 * density), (int) (7 * density), (int) (11 * density), (int) (6 * density));
+            cell.setFocusable(true);
+
+            // The hour on top so each cell reads "which hour - what falls - how likely".
+            TextView hour = new TextView(this);
+            hour.setText(item.time);
+            hour.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            hour.setTextSize(9);
+            hour.setGravity(Gravity.CENTER);
+            hour.setFocusable(false);
+            hour.setDuplicateParentStateEnabled(true);
+            cell.addView(hour);
+
+            TextView icon = new TextView(this);
+            icon.setText(item.icon);
+            icon.setTextSize(18);
+            icon.setGravity(Gravity.CENTER);
+            icon.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            icon.setFocusable(false);
+            icon.setDuplicateParentStateEnabled(true);
+            cell.addView(icon);
+
+            TextView temp = new TextView(this);
+            temp.setText(item.temp + "°");
+            temp.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            temp.setTextSize(13);
+            temp.setGravity(Gravity.CENTER);
+            temp.setTypeface(UiFont.get(this, R.string.font_medium));
+            temp.setFocusable(false);
+            temp.setDuplicateParentStateEnabled(true);
+            cell.addView(temp);
+
+            TextView rain = new TextView(this);
+            rain.setText(item.rainChance + "%");
+            rain.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+            rain.setTextSize(10);
+            rain.setGravity(Gravity.CENTER);
+            rain.setFocusable(false);
+            rain.setDuplicateParentStateEnabled(true);
+            cell.addView(rain);
+
+            strip.addView(cell);
+        }
+        scroller.addView(strip);
+        return scroller;
+    }
+
+    /** One row per forecast day: name, rain chance, max/min. */
+    private View dailyRow(WeatherAirQuality.DailyItem d) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackgroundResource(R.drawable.input_row_bg);
+        row.setPadding((int) (12 * density), (int) (7 * density), (int) (12 * density), (int) (7 * density));
+        row.setFocusable(true);
+
+        TextView day = new TextView(this);
+        day.setText(d.day);
+        // White text turns near-black on the focused selector, same trick as item_input.
+        day.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        day.setDuplicateParentStateEnabled(true);
+        day.setTextSize(14);
+        day.setTypeface(UiFont.get(this, R.string.font_medium));
+        row.addView(day, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView rain = new TextView(this);
+        rain.setText(d.icon + " " + d.rainChance + "%");
+        rain.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        rain.setDuplicateParentStateEnabled(true);
+        rain.setTextSize(12);
+        rain.setGravity(Gravity.END);
+        row.addView(rain, new LinearLayout.LayoutParams(
+                (int) (78 * density), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView temps = new TextView(this);
+        temps.setText(d.maxTemp + "° / " + d.minTemp + "°");
+        temps.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        temps.setDuplicateParentStateEnabled(true);
+        temps.setTextSize(13);
+        temps.setTypeface(UiFont.get(this, R.string.font_medium));
+        temps.setGravity(Gravity.END);
+        row.addView(temps, new LinearLayout.LayoutParams(
+                (int) (88 * density), ViewGroup.LayoutParams.WRAP_CONTENT));
+        return row;
+    }
+
+    /** City switcher: back row, a search box using the leanback IME, then geocode results. */
+    private void fillWeatherSearch(LinearLayout rows, PopupWindow popup) {
+        rows.setTag("search");
+        rows.removeAllViews();
+        WeatherAirQuality.FullWeather w = WeatherAirQuality.getFullWeather(this);
+
+        addPanelRow(rows, R.drawable.ic_home_settings, "Kembali ke " + w.location,
+                () -> fillWeatherMain(rows, popup));
+
+        rows.addView(sectionLabel("KETIK NAMA KOTA"));
+
+        final EditText search = new EditText(this);
+        search.setHint("Misal: Bandung, Surabaya, Medan");
+        search.setSingleLine(true);
+        search.setInputType(InputType.TYPE_CLASS_TEXT);
+        search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        // The box turns white while focused (that is when typing happens), so the text
+        // follows pill_text: white on the dark glass, near-black on the white highlight.
+        search.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        search.setHighlightColor(0x338C9EFF);
+        search.setHintTextColor(0xFF9AA0A6);
+        search.setTextSize(15);
+        search.setTypeface(UiFont.get(this, R.string.font_medium));
+        search.setPadding((int) (12 * density), (int) (9 * density), (int) (12 * density), (int) (9 * density));
+        search.setBackgroundResource(R.drawable.input_row_bg);
+        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        searchLp.setMargins((int) (8 * density), (int) (4 * density), (int) (8 * density), (int) (4 * density));
+        rows.addView(search, searchLp);
+
+        final LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        rows.addView(results, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        final boolean[] fromEnter = new boolean[1];
+        final Runnable goFind = () -> {
+            final String query = search.getText().toString();
+            new Thread(() -> {
+                final List<WeatherAirQuality.GeoCity> cities = WeatherAirQuality.geocodeSync(query);
+                handler.post(() -> {
+                    if (!popup.isShowing()) return;
+                    results.removeAllViews();
+                    if (cities.isEmpty()) {
+                        if (!query.trim().isEmpty()) {
+                            results.addView(sectionLabel("Tidak ketemu — coba ejaan lain"));
+                        }
+                        return;
+                    }
+                    for (int i = 0; i < cities.size(); i++) {
+                        final WeatherAirQuality.GeoCity city = cities.get(i);
+                        View row = cityRow(city, () -> {
+                            WeatherAirQuality.setCity(this, city, this::updateStatusRow);
+                            popup.dismiss();
+                        });
+                        results.addView(row);
+                        // Live suggestions keep the cursor in the box so typing can continue; only
+                        // an explicit OK on the search field hands focus to the result rows.
+                        if (i == 0 && fromEnter[0]) row.requestFocus();
+                    }
+                    fromEnter[0] = false;
+                });
+            }, "weather-geo").start();
+        };
+
+        // Sugesti saat mengetik: tiap perubahan teks menunda pencarian 350 ms supaya bukan satu
+        // request per karakter; hasil muncul di bawah kotak tanpa harus menekan Enter.
+        final Runnable searchDebounce = new Runnable() {
+            @Override
+            public void run() {
+                goFind.run();
+            }
+        };
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                handler.removeCallbacks(searchDebounce);
+                if (s.length() >= 2) handler.postDelayed(searchDebounce, 350);
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+        });
+
+        search.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH
+                    || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                        && (event.getAction() == KeyEvent.ACTION_DOWN))) {
+                handler.removeCallbacks(searchDebounce);
+                fromEnter[0] = true;
+                goFind.run();
+                return true;
+            }
+            return false;
+        });
+
+        // Open the leanback IME shortly after the panel settles; the pairing code keyboard of the
+        // Google TV phone app types into this field the same way.
+        search.requestFocus();
+        popup.getContentView().postDelayed(() -> {
+            if (!popup.isShowing()) return;
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(search, InputMethodManager.SHOW_IMPLICIT);
+        }, 250);
+    }
+
+    /** One geocode result: city name on top, region under it, OK switches the whole card. */
+    private View cityRow(WeatherAirQuality.GeoCity city, Runnable choose) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setBackgroundResource(R.drawable.input_row_bg);
+        row.setPadding((int) (12 * density), (int) (8 * density), (int) (12 * density), (int) (7 * density));
+        row.setFocusable(true);
+        row.setClickable(true);
+        row.setOnClickListener(v -> choose.run());
+
+        TextView name = new TextView(this);
+        name.setText("\uD83D\uDCCD " + city.name + (TextUtils.isEmpty(city.country) ? "" : " — " + city.country));
+        name.setTextColor(getResources().getColorStateList(R.drawable.pill_text));
+        name.setTextSize(14);
+        name.setTypeface(UiFont.get(this, R.string.font_medium));
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setFocusable(false);
+        name.setDuplicateParentStateEnabled(true);
+        row.addView(name);
+
+        TextView region = new TextView(this);
+        region.setText(TextUtils.isEmpty(city.admin1) ? city.name : city.admin1 + "  ·  lat "
+                + String.format(Locale.ROOT, "%.2f  lon %.2f", city.lat, city.lon));
+        region.setTextColor(0x80FFFFFF);
+        region.setTextSize(11);
+        region.setSingleLine(true);
+        region.setEllipsize(TextUtils.TruncateAt.END);
+        region.setFocusable(false);
+        region.setDuplicateParentStateEnabled(true);
+        row.addView(region);
+        return row;
+    }
+
+
+    /**
+     * Row labels for the wallpaper list. Two themes ship the same picture name ("01_aurora_4k"), so a
+     * name that repeats keeps the theme's own number: "Aurora 4k 1", "Aurora 4k 2".
+     */
+    private static List<String> wallpaperLabels(List<File> images) {
+        List<String> base = new ArrayList<>(images.size());
+        Map<String, Integer> seen = new HashMap<>();
+        for (File image : images) {
+            String label = prettyWallpaperName(image.getName());
+            base.add(label);
+            Integer count = seen.get(label);
+            seen.put(label, count == null ? 1 : count + 1);
+        }
+        List<String> labels = new ArrayList<>(images.size());
+        for (int i = 0; i < images.size(); i++) {
+            String label = base.get(i);
+            Integer count = seen.get(label);
+            if (count != null && count > 1) {
+                int number = leadingNumber(images.get(i).getName());
+                label = label + " " + (number > 0 ? number : i + 1);
+            }
+            labels.add(label);
+        }
+        return labels;
+    }
+
+    /** The number a theme's file name starts with, or 0 when it starts with a word. */
+    private static int leadingNumber(String name) {
+        int end = 0;
+        while (end < name.length() && Character.isDigit(name.charAt(end))) end++;
+        if (end == 0) return 0;
+        try {
+            return Integer.parseInt(name.substring(0, end));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** "mac05_cityscape_tokyo_night.jpg" -> "Cityscape Tokyo Night". */
+    private static String prettyWallpaperName(String file) {
+        String name = file;
+        int dot = name.lastIndexOf('.');
+        if (dot > 0) name = name.substring(0, dot);
+        name = name.replace('_', ' ').trim();
+        int space = name.indexOf(' ');
+        if (space > 0 && name.substring(0, space).matches("[A-Za-z]{0,4}\\d{0,2}")) {
+            name = name.substring(space + 1).trim();
+        }
+        if (name.isEmpty()) return file;
+        StringBuilder pretty = new StringBuilder(name.length());
+        for (String word : name.split("\\s+")) {
+            if (word.isEmpty()) continue;
+            if (pretty.length() > 0) pretty.append(' ');
+            pretty.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return pretty.toString();
+    }
+
     private void openNetworkPill() {
         Intent i = vpnApp.isEmpty() ? null : getPackageManager().getLeanbackLaunchIntentForPackage(vpnApp);
         if (i == null && !vpnApp.isEmpty()) i = getPackageManager().getLaunchIntentForPackage(vpnApp);
@@ -3091,6 +3822,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int m = (int) (6 * density), h = (int) (12 * density);
         lp.setMargins(h, m, h, m);
         rows.addView(line, lp);
+    }
+
+    /** Like addInputRow but the panel stays open: used by the weather panel's own screens. */
+    private void addPanelRow(LinearLayout rows, int iconRes, String title, Runnable action) {
+        View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) row.findViewById(R.id.icon)).setImageResource(iconRes);
+        ((TextView) row.findViewById(R.id.title)).setText(title);
+        row.findViewById(R.id.status).setVisibility(View.GONE);
+        row.findViewById(R.id.dot).setVisibility(View.GONE);
+        row.setOnClickListener(v -> action.run());
+        rows.addView(row);
+        return;
     }
 
     private void addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, int state, Runnable action) {
