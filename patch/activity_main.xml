@@ -388,13 +388,14 @@
 
     <!-- Now playing card (config.xml, now_playing): a glass panel over the free wallpaper between the header
          and the dock. Position and size live here; nothing else depends on them. Empty when no app has a
-         media session, and it stays that way without an auto-hide. -->
+         media session, and it stays that way without an auto-hide. marginTop keeps it clear of the dock
+         band, which starts at 344dp on this TV (212 + 120 = 332). -->
     <com.gathin.tvhome.NowPlayingCard
         android:id="@+id/nowPlaying"
         android:layout_width="350dp"
         android:layout_height="120dp"
         android:layout_gravity="top|end"
-        android:layout_marginTop="256dp"
+        android:layout_marginTop="212dp"
         android:layout_marginEnd="84dp" />
 
     <!-- The single floating glass highlight that springs between tiles. -->
