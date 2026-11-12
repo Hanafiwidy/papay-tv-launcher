@@ -318,7 +318,8 @@ public class NowPlayingCard extends FrameLayout {
         hasSession = false;
         handler.removeCallbacks(ticker);
         title.setText(R.string.now_playing_nothing);
-        artist.setText(R.string.now_playing_open);
+        // Say so when the player is gone: "OK to open BitChord" would promise an app that is not there.
+        artist.setText(installed() ? R.string.now_playing_open : R.string.now_playing_missing);
         setContentDescription(getContext().getString(R.string.now_playing_nothing));
         play.setImageResource(R.drawable.ic_play);
         progress.setVisibility(View.GONE);

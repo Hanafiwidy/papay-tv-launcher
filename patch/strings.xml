@@ -153,6 +153,7 @@
          BitChord TV first; the empty state offers to open the player. -->
     <string name="now_playing_nothing">Nothing playing</string>
     <string name="now_playing_open">OK to open BitChord</string>
+    <string name="now_playing_missing">BitChord not installed</string>
     <string name="now_playing_previous">Previous track</string>
     <string name="now_playing_next">Next track</string>
     <string name="now_playing_play">Play</string>

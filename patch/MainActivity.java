@@ -636,6 +636,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                updateNowPlayingVisibility();
                 if (!glassShown) return;
                 glassTargetY -= dy;
                 glassScrollShift -= dy;
@@ -2008,6 +2009,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         glass.animate().cancel();
         if (animations && !reducedMotion) glass.animate().alpha(0f).setDuration(160).start();
         else glass.setAlpha(0f);
+    }
+
+    /**
+     * The now-playing card sits in the free wallpaper above the dock. Scrolling the grid brings tiles
+     * into that space, so the card goes away until the grid is back at its start.
+     */
+    private void updateNowPlayingVisibility() {
+        if (!nowPlayingEnabled) return;
+        boolean atStart = singleRow
+                ? grid.computeHorizontalScrollOffset() == 0
+                : grid.computeVerticalScrollOffset() == 0;
+        nowPlaying.setVisibility(atStart ? View.VISIBLE : View.GONE);
     }
 
     // ---- optional system stats (config.xml show_stats) --------------------------------------------

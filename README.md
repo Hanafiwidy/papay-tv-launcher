@@ -112,9 +112,11 @@ The glass panel on the right, between the header and the dock, mirrors the media
 | Up / Down | Leave the card |
 
 It is always on screen (`now_playing`: true); the empty state (*Nothing playing*) is what you see when
-BitChord is force-closed, and OK there opens BitChord. The card only binds while Home is visible, so it
-doesn't keep the player's process alive in the background. It needs BitChord TV installed - the phone
-build is a different package and has no session for the TV remote to reach.
+BitChord is force-closed, and OK there opens BitChord. It slips away while the app grid is scrolled
+down, so it never covers a tile, and says *BitChord not installed* when the player is missing. The card
+only binds while Home is visible, so it doesn't keep the player's process alive in the background. It
+needs BitChord TV installed - the phone build is a different package and has no session for the TV
+remote to reach.
 
 ## Key config options
 
