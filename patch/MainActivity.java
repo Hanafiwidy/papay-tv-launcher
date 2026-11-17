@@ -377,6 +377,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateClockVisibility();
         }
     };
+    // Standby: the player restores its last song paused on the next bind, so the card must forget it now.
+    private final IntentFilter screenFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+    private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            NowPlayingCard.resetOpened();
+            if (nowPlaying != null) nowPlaying.resetWake();
+        }
+    };
     private final Runnable minuteTick = new Runnable() {
         @Override
         public void run() {
@@ -863,8 +872,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // another app is in front must still mark the tiles stale, or Home would have to rebuild on every return.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(screenReceiver, screenFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(packageReceiver, packageFilter);
+            registerReceiver(screenReceiver, screenFilter);
         }
 
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
@@ -1255,6 +1266,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onDestroy();
         SoundEffects.release();
         unregisterReceiver(packageReceiver);
+        unregisterReceiver(screenReceiver);
         wallpaperPlayer.close();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);

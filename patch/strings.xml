@@ -162,4 +162,7 @@
     <string name="now_playing_next">Next track</string>
     <string name="now_playing_play">Play</string>
     <string name="now_playing_pause">Pause</string>
+
+    <!-- Screensaver lyrics card (ClockScene/DreamLyrics). -->
+    <string name="dream_no_lyrics">No lyrics</string>
 </resources>

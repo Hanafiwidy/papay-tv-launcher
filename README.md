@@ -1,14 +1,14 @@
-﻿# Papay TV Launcher - Custom Home for TCL BeyondTV
+# Papay TV Launcher - Custom Home for TCL BeyondTV
 
-A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv) launcher (v2.7, versionCode 8) with a Liquid Glass look, Jakarta weather, PS5-style navigation sounds, and a wallpaper-synced idle screensaver. Built and tested on a **TCL BeyondTV (Android TV 9, API 28)**.
+A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv) launcher (**v3.0**, versionCode 9, on top of cleanyourtv v2.7) with a Liquid Glass look, Jakarta weather, PS5-style navigation sounds, a wallpaper-synced idle screensaver, and synced lyrics on that screensaver. Built and tested on a **TCL BeyondTV (Android TV 9, API 28)**.
 
 | Before: stock TCL home | After: Papay launcher |
 |---|---|
 | ![Before](screenshots/before-stock-2026-10-24.png) | ![After](screenshots/papay-home-2026-11-12.png) |
 
-![Screensaver](screenshots/papay-screensaver-2026-11-12.png)
+![Screensaver](screenshots/papay-screensaver-2026-11-17.png)
 
-*Idle screensaver: same wallpaper, clock, weather and greeting.*
+*Idle screensaver: same wallpaper, clock, greeting, one-line weather, and the lyrics of whatever BitChord TV is playing.*
 
 ## Features
 
@@ -19,10 +19,18 @@ A customized build of the [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 - **Wi-Fi pill shows the connected SSID** (set `wifi_label_width` to fit your SSID); clicking it opens a glass network picker.
 - **Gear menu**: click = glass dropdown (Wallpaper + TV Settings), long press = full Settings menu.
 - **Wallpaper picker** with a rotating collection; the last displayed picture is saved and survives reboots, and Home and the screensaver always show that same picture.
-- **Idle screensaver** (`dream_clock.xml` + `ClockScene.java`): huge thin clock, greeting, date, and a glass weather card over the current wallpaper, dimmed by `clock_wallpaper_dim`.
+- **Idle screensaver** (`dream_clock.xml` + `ClockScene.java`): huge thin clock (105sp), greeting, date, and the weather on one line under the date (`JAKARTA � 34� Berawan � AQI 178 Tidak Sehat`) over the current wallpaper, dimmed by `clock_wallpaper_dim`.
+- **Synced lyrics on the screensaver** (`DreamLyrics.java`): the right side shows the line BitChord TV is playing plus the next three, fetched from [LRCLIB](https://lrclib.net) and cached per track. The card only exists while a track is playing; pause or stop and it goes away. A long line shrinks to stay on one row instead of wrapping. No lyrics on LRCLIB: the card says *No lyrics*.
 - **No color gradients**: hero art, scrim, ambient glow, and app glow disabled so the wallpaper shows clean.
 - **Move apps around** (on by default): hold OK on any tile for the glass menu - *Ganti dengan aplikasi lain*, *Pindahkan*, *Info aplikasi*. Pick **Pindahkan**, move the tile with the arrows, **Back** to drop it and **Back** again to finish. The saved order survives reboots and is written to `files/order.txt`.
-- **Now playing card** (`now_playing`): a glass card over the free wallpaper between the header and the dock showing the current BitChord TV track (cover, title, artist, progress). OK plays/pauses, Left/Right previous/next, hold OK opens BitChord. It never auto-hides; with no session it says *Nothing playing* and OK opens BitChord.
+- **Now playing card** (`now_playing`): a glass card over the free wallpaper between the header and the dock showing the current BitChord TV track (cover, title, artist, progress). OK plays/pauses, Left/Right previous/next, hold OK opens BitChord. It never auto-hides while Home is in front; with no session it says *Nothing playing* and OK opens BitChord. After the TV wakes from standby (or a power cut) it stays empty until BitChord is opened or a track starts, so last night's paused song doesn't greet you in the morning.
+
+## What changed in v3
+
+- Screensaver: lyrics card from the BitChord session, clock down to 105sp, weather on one line under the date. The glass weather card with tomorrow's forecast is Home-only now.
+- Screensaver: no card at all when nothing is playing - it is not a "Nothing playing" panel on top of the wallpaper.
+- Now playing card: gated on wake, so it is empty after the TV has been off until the player is opened or playback starts.
+- Long lyric lines shrink to one row instead of wrapping or ending in `...`.
 
 ## One-prompt install (any Android TV 8+)
 
@@ -40,11 +48,11 @@ the TV and accepting the RSA prompt still has to be done with the remote. Withou
 
 | Path | What it is |
 |---|---|
-| `mikhayla-glass-home-2.7.apk` | Ready-to-install APK (635 KB) |
+| `mikhayla-glass-home-3.0.apk` | Ready-to-install APK (638 KB) |
 | `BitChordTV-v1.9.1_armeabi-v7a.apk` | BitChord TV 1.9.1, the player the now-playing card reads (GPL-3.0, source: [kushagrasinghx/BitChord](https://github.com/kushagrasinghx/BitChord)) |
 | `config.example.json` | Runtime config pushed to the TV (edit names/SSID to taste) |
 | `PROMPT.md` | Agent instructions: read the TV model, pick a list, install, verify, undo |
-| `patch/` | All source files changed vs. upstream cleanyourtv v2.7 |
+| `patch/` | All source files changed vs. upstream cleanyourtv v2.7 (`DreamLyrics.java` is the screensaver lyrics) |
 | `sounds/` | Navigation sound packs baked into the APK: PS5 (default), Nintendo Switch, Xbox |
 | `wallpapers/` | 25 wallpaper images in `tv-4k/`, all 3840x2160 JPEG (ours + picks from the MY-WALLPAPER-COLLECTION repo) |
 | `debloat/` | The exact package-disable list applied on TV-1 (51 packages) |
@@ -66,7 +74,7 @@ Enable Network ADB debugging on the TV first, and make sure the PC and TV share 
 What it does, in order:
 
 1. `adb connect` to the TV.
-2. Installs `mikhayla-glass-home-2.7.apk` (PS5 sounds are already inside it) and the bundled
+2. Installs `mikhayla-glass-home-3.0.apk` (PS5 sounds are already inside it) and the bundled
    `BitChordTV-v1.9.1_armeabi-v7a.apk` if that file is present (skipped when you delete it).
 3. Builds a `config.json` from `config.example.json` and pushes it (with your greeting name).
 4. Pushes the 25 wallpapers into the app's `files/wallpapers/` dir.
@@ -81,7 +89,7 @@ Not included: iDLIX (a third-party store APK - install it yourself if you want i
 
 ```powershell
 adb connect <TV-IP>:5555
-adb install -r mikhayla-glass-home-2.7.apk
+adb install -r mikhayla-glass-home-3.0.apk
 adb install -r BitChordTV-v1.9.1_armeabi-v7a.apk
 adb push config.example.json /sdcard/Android/data/com.gathin.tvhome/files/config.json
 adb push wallpapers/tv-4k /sdcard/Android/data/com.gathin.tvhome/files/wallpapers/
@@ -115,7 +123,9 @@ The glass panel on the right, between the header and the dock, mirrors the media
 | Up / Down | Leave the card |
 
 It is always on screen (`now_playing`: true); the empty state (*Nothing playing*) is what you see when
-BitChord is force-closed, and OK there opens BitChord. It slips away while the app grid is scrolled
+BitChord is force-closed, and OK there opens BitChord. After the TV wakes from standby or a power cut
+the card stays empty until BitChord is opened or a track starts, so a song paused last night does not
+come back by itself; a pause you pressed while the TV was awake keeps the card. It slips away while the app grid is scrolled
 down, so it never covers a tile, and says *BitChord not installed* when the player is missing. The card
 only binds while Home is visible, so it doesn't keep the player's process alive in the background. It
 needs BitChord TV installed - the phone build is a different package and has no session for the TV
@@ -145,7 +155,7 @@ and `setup.ps1` installs it; it is GPL-3.0 software from
 ## Rebuilding from source
 
 1. Clone `Gathin23/cleanyourtv` v2.7.
-2. Replace the files under `app/src/main/...` with those in `patch/` (paths mirror the upstream tree). `config.xml`, `strings.xml`, `weather_card.xml` and `dream_scrim.xml` go to `res/values/`, `res/values-in/` and `res/drawable/` respectively.
+2. Replace the files under `app/src/main/...` with those in `patch/` (paths mirror the upstream tree). `config.xml`, `strings.xml`, `styles.xml`, `strings-in.xml`, `weather_card.xml` and `dream_scrim.xml` go to `res/values/`, `res/values-in/` and `res/drawable/` respectively.
 3. Copy `sounds/*.wav` into `app/src/main/res/raw/` (the APK needs them; `sounds/` keeps the packs).
 4. `./gradlew assembleRelease` (JDK 17). The release build is signed with the debug key, the same as the APK here.
 

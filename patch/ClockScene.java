@@ -25,9 +25,10 @@ import java.util.Locale;
 import java.util.Random;
 
 /**
- * The clock screensaver's scene (layout dream_clock): a large thin clock, the greeting and the date
- * over Home's wallpaper, with a liquid-glass card holding Jakarta's weather now and tomorrow.
- * Shared by ClockDream (the system screensaver) and ClockActivity (Home left idle).
+ * The clock screensaver's scene (layout dream_clock): a thin clock, the greeting, the date and one
+ * weather line over Home's wallpaper, plus a liquid-glass card with the lyrics of what BitChord is
+ * playing while it is playing (DreamLyrics). Shared by ClockDream (the system screensaver) and
+ * ClockActivity (Home left idle).
  *
  * Once a minute the greeting and the weather are refreshed (the weather only hits the network when
  * its 30-minute cache is due). Without clock_wallpaper the scene falls back to the old slow ambient
@@ -44,6 +45,7 @@ final class ClockScene {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
+    private final View rootView;
     private final View content;
     private final View ambient;
     private final TextView greetingView;
@@ -51,8 +53,7 @@ final class ClockScene {
     private final TextView tempView;
     private final TextView conditionView;
     private final TextView aqiView;
-    private final TextView tomorrowView;
-    private final TextView tomorrowRainView;
+    private DreamLyrics lyrics;
     private final GradientDrawable glow;
     private int colorIndex;
     private int glowColor;
@@ -83,6 +84,7 @@ final class ClockScene {
 
     /** root is the inflated dream_clock layout. */
     ClockScene(View root) {
+        rootView = root;
         content = root.findViewById(R.id.dreamContent);
         ambient = root.findViewById(R.id.dreamAmbient);
         greetingView = root.findViewById(R.id.dreamGreeting);
@@ -90,8 +92,6 @@ final class ClockScene {
         tempView = root.findViewById(R.id.dreamTemp);
         conditionView = root.findViewById(R.id.dreamCondition);
         aqiView = root.findViewById(R.id.dreamAqi);
-        tomorrowView = root.findViewById(R.id.dreamTomorrow);
-        tomorrowRainView = root.findViewById(R.id.dreamTomorrowRain);
         glow = new GradientDrawable();
         glow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
         ambient.setBackground(glow);
@@ -110,12 +110,14 @@ final class ClockScene {
         handler.removeCallbacks(tick);
         handler.postDelayed(tick, MOVE_MS);
         if (wallpaperFile != null && !wallpaperShown) loadWallpaper();
+        if (lyrics != null) lyrics.start();
     }
 
     void stop() {
         handler.removeCallbacksAndMessages(null);   // the tick and any glow steps still queued
         content.animate().cancel();
         wallpaperGeneration++;   // a decode still running must not attach its picture to a stopped scene
+        if (lyrics != null) lyrics.stop();
     }
 
     /**
@@ -130,6 +132,7 @@ final class ClockScene {
      */
     void useHomeWallpaper(Context ctx) {
         context = ctx.getApplicationContext();
+        lyrics = new DreamLyrics(context, rootView);
         Config cfg;
         try {
             cfg = Config.load(ctx);
@@ -173,7 +176,7 @@ final class ClockScene {
         if (!greeting.contentEquals(greetingView.getText())) greetingView.setText(greeting);
     }
 
-    /** Fills the glass card from the cached forecast: now, AQI, and tomorrow's range and rain chance. */
+    /** Fills the weather line from the cached forecast: place, now, condition and AQI. */
     private void updateWeather() {
         if (context == null || tempView == null) return;
         WeatherAirQuality.FullWeather weather = WeatherAirQuality.getFullWeather(context);
@@ -186,16 +189,6 @@ final class ClockScene {
         SpannableStringBuilder aqiLine = new SpannableStringBuilder(aqi);
         aqiLine.setSpan(new ForegroundColorSpan(weather.aqiColor), 0, aqiLine.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         aqiView.setText(aqiLine);
-
-        List<WeatherAirQuality.DailyItem> daily = weather.daily;
-        WeatherAirQuality.DailyItem tomorrow = daily != null && daily.size() > 1 ? daily.get(1) : null;
-        if (tomorrow == null) {
-            tomorrowView.setText("—");
-            tomorrowRainView.setText("");
-        } else {
-            tomorrowView.setText(String.format(Locale.ROOT, "%d° / %d°", tomorrow.maxTemp, tomorrow.minTemp));
-            tomorrowRainView.setText(context.getString(R.string.clock_rain, tomorrow.rainChance));
-        }
     }
 
     private void loadWallpaper() {

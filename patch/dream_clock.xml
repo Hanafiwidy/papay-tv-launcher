@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Screensaver (ClockDream and Home's idle clock): Home's wallpaper behind a large thin clock, the
-     greeting, the date, and a liquid-glass card with Jakarta's weather now and tomorrow. -->
+<!-- Screensaver (ClockDream and Home's idle clock): Home's wallpaper behind a thin clock, the greeting, the
+     date and one weather line, and on the right the lyrics of whatever BitChord is playing. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -60,7 +60,7 @@
                 android:format12Hour="h:mm"
                 android:format24Hour="HH:mm"
                 android:textColor="#FFFFFFFF"
-                android:textSize="150sp"
+                android:textSize="105sp"
                 android:fontFamily="@string/font_extralight"
                 android:letterSpacing="-0.05"
                 android:shadowColor="#99000000"
@@ -85,107 +85,140 @@
                 android:shadowDx="0"
                 android:shadowDy="2"
                 android:textAllCaps="true" />
-        </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="48dp"
-            android:orientation="vertical"
-            android:gravity="start"
-            android:background="@drawable/weather_card"
-            android:paddingStart="26dp"
-            android:paddingEnd="30dp"
-            android:paddingTop="22dp"
-            android:paddingBottom="22dp">
-
-            <TextView
-                android:id="@+id/dreamLocation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:textColor="#99FFFFFF"
-                android:textSize="12sp"
-                android:fontFamily="@string/font_medium"
-                android:letterSpacing="0.26"
-                android:textAllCaps="true" />
-
-            <TextView
-                android:id="@+id/dreamTemp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:singleLine="true"
-                android:textColor="#FFFFFFFF"
-                android:textSize="54sp"
-                android:fontFamily="@string/font_extralight"
-                android:letterSpacing="-0.03"
-                android:includeFontPadding="false" />
-
-            <TextView
-                android:id="@+id/dreamCondition"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:singleLine="true"
-                android:textColor="#CCFFFFFF"
-                android:textSize="15sp"
-                android:fontFamily="@string/font_regular" />
-
-            <TextView
-                android:id="@+id/dreamAqi"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:singleLine="true"
-                android:textSize="13sp"
-                android:fontFamily="@string/font_medium"
-                android:letterSpacing="0.04" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"
-                android:background="#26FFFFFF" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:text="BESOK"
-                android:textColor="#99FFFFFF"
-                android:textSize="11sp"
-                android:fontFamily="@string/font_medium"
-                android:letterSpacing="0.24"
-                android:textAllCaps="true" />
-
+            <!-- One weather line under the date: JAKARTA · 34° Berawan · AQI 180. -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginStart="7dp"
+                android:layout_marginTop="16dp"
                 android:orientation="horizontal"
+                android:gravity="center_vertical"
                 android:baselineAligned="true">
 
                 <TextView
-                    android:id="@+id/dreamTomorrow"
+                    android:id="@+id/dreamLocation"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:singleLine="true"
-                    android:textColor="#E6FFFFFF"
-                    android:textSize="24sp"
-                    android:fontFamily="@string/font_light" />
-
-                <TextView
-                    android:id="@+id/dreamTomorrowRain"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
                     android:singleLine="true"
                     android:textColor="#B3FFFFFF"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
+                    android:fontFamily="@string/font_medium"
+                    android:letterSpacing="0.22"
+                    android:textAllCaps="true"
+                    android:shadowColor="#B3000000"
+                    android:shadowRadius="10"
+                    android:shadowDx="0"
+                    android:shadowDy="2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:text="·"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="13sp"
                     android:fontFamily="@string/font_regular" />
+
+                <TextView
+                    android:id="@+id/dreamTemp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="17sp"
+                    android:fontFamily="@string/font_medium"
+                    android:shadowColor="#B3000000"
+                    android:shadowRadius="10"
+                    android:shadowDx="0"
+                    android:shadowDy="2" />
+
+                <TextView
+                    android:id="@+id/dreamCondition"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:singleLine="true"
+                    android:textColor="#D9FFFFFF"
+                    android:textSize="16sp"
+                    android:fontFamily="@string/font_regular"
+                    android:shadowColor="#B3000000"
+                    android:shadowRadius="10"
+                    android:shadowDx="0"
+                    android:shadowDy="2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:text="·"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="13sp"
+                    android:fontFamily="@string/font_regular" />
+
+                <TextView
+                    android:id="@+id/dreamAqi"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:textSize="13sp"
+                    android:fontFamily="@string/font_medium"
+                    android:letterSpacing="0.04"
+                    android:shadowColor="#B3000000"
+                    android:shadowRadius="10"
+                    android:shadowDx="0"
+                    android:shadowDy="2" />
             </LinearLayout>
+        </LinearLayout>
+
+        <!-- Lyrics of whatever BitChord is playing. Four one-line rows so a long line shrinks instead of wrapping
+             as if someone pressed enter. Hidden unless the session is actually playing (DreamLyrics), so an idle
+             screensaver is only the greeting, clock, date and weather. -->
+        <LinearLayout
+            android:id="@+id/dreamLyricsCard"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="56dp"
+            android:orientation="vertical"
+            android:gravity="start"
+            android:background="@drawable/weather_card"
+            android:paddingStart="30dp"
+            android:paddingEnd="30dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="26dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/dreamLyricsTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="#99FFFFFF"
+                android:textSize="13sp"
+                android:fontFamily="@string/font_medium"
+                android:letterSpacing="0.18"
+                android:textAllCaps="true" />
+
+            <TextView
+                android:id="@+id/dreamLyricsLine0"
+                style="@style/DreamLyricLine"
+                android:layout_marginTop="14dp" />
+
+            <TextView
+                android:id="@+id/dreamLyricsLine1"
+                style="@style/DreamLyricLine" />
+
+            <TextView
+                android:id="@+id/dreamLyricsLine2"
+                style="@style/DreamLyricLine" />
+
+            <TextView
+                android:id="@+id/dreamLyricsLine3"
+                style="@style/DreamLyricLine" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

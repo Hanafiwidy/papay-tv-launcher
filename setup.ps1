@@ -32,7 +32,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
-$apk    = Join-Path $repo "mikhayla-glass-home-2.7.apk"
+$apk    = Join-Path $repo "mikhayla-glass-home-3.0.apk"
 # BitChord TV (GPL-3.0, github.com/kushagrasinghx/BitChord): the player the now-playing card reads.
 $bitchord = Join-Path $repo "BitChordTV-v1.9.1_armeabi-v7a.apk"
 $cfgEx  = Join-Path $repo "config.example.json"

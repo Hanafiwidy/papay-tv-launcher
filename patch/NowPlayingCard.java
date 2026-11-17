@@ -53,8 +53,11 @@ import java.util.concurrent.Executors;
 public class NowPlayingCard extends FrameLayout {
 
     /** BitChord TV: the phone build is a different package and has no media session for a TV remote. */
-    private static final String PACKAGE = "com.music.bitchord.tv";
-    private static final String SERVICE = "com.music.bitchord.playback.PlaybackService";
+    static final String PACKAGE = "com.music.bitchord.tv";
+    static final String SERVICE = "com.music.bitchord.playback.PlaybackService";
+
+    /** BitChord was opened since the screen went off, so its restored paused session may be shown. */
+    private static boolean openedSinceWake;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService artExecutor = Executors.newSingleThreadExecutor();
@@ -72,6 +75,8 @@ public class NowPlayingCard extends FrameLayout {
     private MediaBrowser browser;
     private MediaController controller;
     private boolean hasSession;
+    /** Playback was seen since the screen went off: the owner's own pause keeps the card visible on return. */
+    private boolean playingSeen;
     /** Artwork URL on screen (or being fetched); an empty string when there is none. */
     private String artUrl = "";
 
@@ -218,6 +223,27 @@ public class NowPlayingCard extends FrameLayout {
         showEmpty();
     }
 
+    /** True for the player's package: the launch paths use it to record that BitChord was opened. */
+    static boolean isPlayer(String pkg) {
+        return PACKAGE.equals(pkg);
+    }
+
+    /** Any path that actually opens BitChord (tile, library, remote launch, the card itself). */
+    static void openedPlayer() {
+        openedSinceWake = true;
+    }
+
+    /** Screen off: the next wake is empty until playback or BitChord itself proves otherwise. */
+    static void resetOpened() {
+        openedSinceWake = false;
+    }
+
+    /** Screen off while Home is alive: drop the last track and the "playback seen" proof too. */
+    void resetWake() {
+        playingSeen = false;
+        showEmpty();
+    }
+
     /** Bind while Home is visible; MainActivity calls this from onStart. */
     void start() {
         if (browser != null) return;
@@ -248,6 +274,9 @@ public class NowPlayingCard extends FrameLayout {
             }
             browser = null;
         }
+        // Nothing of the last song stays on screen while Home is in the background, or it would be the first thing
+        // seen after a wake.
+        showEmpty();
     }
 
     private void releaseController() {
@@ -272,13 +301,22 @@ public class NowPlayingCard extends FrameLayout {
             return;
         }
 
+        boolean playing = state != null && state.getState() == PlaybackState.STATE_PLAYING;
+        if (playing) playingSeen = true;
+        // After standby or a power cut BitChord restores the last queue paused, and merely binding starts its
+        // service. Without proof that anything played or that the app was opened since the screen went off, the
+        // card stays empty instead of showing the song from before the TV was switched off.
+        if (!playing && !playingSeen && !openedSinceWake) {
+            showEmpty();
+            return;
+        }
+
         hasSession = true;
         CharSequence by = metadata.getDescription().getSubtitle();
         title.setText(name);
         artist.setText(by != null && by.length() > 0 ? by : "");
         setContentDescription(by != null && by.length() > 0 ? name + ", " + by : name.toString());
 
-        boolean playing = state != null && state.getState() == PlaybackState.STATE_PLAYING;
         play.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
         play.setContentDescription(getContext().getString(
                 playing ? R.string.now_playing_pause : R.string.now_playing_play));
@@ -347,6 +385,7 @@ public class NowPlayingCard extends FrameLayout {
     }
 
     private void openPlayerApp() {
+        openedPlayer();
         if (controller != null) {
             try {
                 android.app.PendingIntent intent = controller.getSessionActivity();
@@ -366,13 +405,17 @@ public class NowPlayingCard extends FrameLayout {
         }
     }
 
-    private boolean installed() {
+    static boolean installed(Context context) {
         try {
-            getContext().getPackageManager().getPackageInfo(PACKAGE, 0);
+            context.getPackageManager().getPackageInfo(PACKAGE, 0);
             return true;
         } catch (PackageManager.NameNotFoundException e) {
             return false;
         }
+    }
+
+    private boolean installed() {
+        return installed(getContext());
     }
 
     private void loadArt(MediaMetadata metadata) {
